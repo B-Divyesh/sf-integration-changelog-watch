@@ -1,16 +1,19 @@
 FROM node:22-alpine AS web
 WORKDIR /app
-COPY package.json vite.config.ts tsconfig.json ./
+COPY package.json package-lock.json vite.config.ts tsconfig.json ./
 COPY frontend ./frontend
-RUN npm install --ignore-scripts && npm run build
+RUN npm ci --ignore-scripts && npm run build
 
-FROM rust:1.85-alpine AS build
+FROM rust:1.88-alpine AS build
 ARG BUILD_SHA=dev
 WORKDIR /app
 RUN apk add --no-cache musl-dev pkgconfig
-COPY Cargo.toml ./
+COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-RUN cargo build --release
+# Keep the image reproducible.  The lockfile currently includes ICU 2.3,
+# whose published MSRV is Rust 1.88, so do not lower this builder image
+# without also regenerating and validating Cargo.lock on the new toolchain.
+RUN cargo build --release --locked
 
 FROM alpine:3.21
 ARG BUILD_SHA=dev

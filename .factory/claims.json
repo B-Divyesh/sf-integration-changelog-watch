@@ -3,14 +3,14 @@
     "id": "sample-action-cards",
     "claim": "The sample opens with matched notices, owners, and checks.",
     "where": "landing action and demo dashboard",
-    "test": "npm test -- --grep @claim:sample-action-cards",
+    "test": "npm run build && npm run test:browser -- --grep @claim:sample-action-cards",
     "sandbox": "fresh browser demo workspace seeded from shipped sample data"
   },
   {
     "id": "csv-export",
     "claim": "Exports action cards as CSV.",
     "where": "dashboard export button",
-    "test": "npm test -- --grep @claim:csv-export",
+    "test": "npm run build && npm run test:browser -- --grep @claim:csv-export",
     "sandbox": "demo action cards produce a header plus one row per action"
   }
 ]

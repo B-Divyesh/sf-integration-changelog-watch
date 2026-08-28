@@ -7,12 +7,12 @@ Add an explicit public changelog or RSS feed, matching words, an owner, and the 
 ## Run locally
 
 ```sh
-npm install
+npm ci
 npm run build                 # creates dist/
 cargo run                     # serves dist/ and API on http://localhost:8080
 ```
 
-For frontend development, use `npm run dev`. Run `npm test` for shipped sample and claim checks. Run `cargo test` for server compilation and unit checks.
+For frontend development, use `npm run dev`. Run `npm test` for shipped sample and container-toolchain checks. Run `cargo test` for server unit checks. Run `npm run test:browser` after `npm run build` for browser, keyboard, mobile, privacy, and accessibility smoke coverage. The exact browser commands for each published claim live in `.factory/claims.json`.
 
 Open `http://localhost:8080/demo` for a one-click sandbox. Demo data uses the `demo:integration-changelog-watch` browser storage namespace and is discarded by **Start for real**.
 
@@ -22,7 +22,7 @@ The container exposes `GET /health`, `GET|POST /api/watches`, `GET /api/actions`
 
 ## Deploy
 
-Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. It starts with only `PORT` required (default `8080`) and persists its SQLite database at `/data/changelog-watch.db` when that directory is mounted.
+Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses Rust 1.88 because the locked ICU dependency family requires it, and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`) and persists its SQLite database at `/data/changelog-watch.db` when that directory is mounted.
 
 The optional $39 one-time team tier uses the Sociobot hosted checkout and license verification. Sociobot/Dodo is merchant of record. See `/privacy` and `/terms`.
 
