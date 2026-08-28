@@ -191,12 +191,17 @@ async fn main() {
         .clone()
         .unwrap_or_else(default_database_url);
     let db = match SqlitePoolOptions::new()
-        .max_connections(5)
+        // This deployment deliberately runs one replica with SQLite on the
+        // mounted Azure Files volume. A single pool connection keeps SQLite's
+        // file locking local to that process and queues the dashboard's
+        // parallel reads safely instead of leaving them pending on SMB.
+        .max_connections(1)
         .connect(&db_url)
         .await
     {
         Ok(pool) => pool,
         Err(_) => SqlitePoolOptions::new()
+            .max_connections(1)
             .connect("sqlite:changelog-watch.db?mode=rwc")
             .await
             .expect("SQLite starts"),
