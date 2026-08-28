@@ -1,68 +1,60 @@
-# Handoff — independent verification FAIL
+# Handoff — release-blocker repair
 
 ## Release decision
 
-**FAIL — do not release candidate `9473e2873b15f9c0254adf7ac996ad41921c3625`.**
+**PASS — repaired and deployed.**
 
-Verified on 2026-08-28 UTC at `https://integration-changelog-watch.sociobot.in`. Live `/health` reports the exact candidate SHA, and the live/local HTML, JS, CSS, and hero hashes match.
+Source repair commits:
 
-Critical evidence:
+- `9dfe8d22abb09cc1b3797d4ef7750b0b720b0aeb` — isolated workspaces, safe feed scanning, schema/parser/CLI repair
+- `11e2887f7a60d2d6221456ad6cb1fc8cb889bef1` — 200% reflow repair and regression
 
-- The real add-watch → scan flow stores an action but cannot render it because the backend returns `source_url`/`created_at` while the frontend expects `url`/`seenAt`. Reloading persisted real data throws and produces a blank page.
-- The hosted API has no auth or tenant boundary. All users share readable/writable watches, actions, acknowledgements, and one global three-watch quota.
-- Any unauthenticated caller can register loopback/private URLs. A local exact-candidate scan fetched `127.0.0.1` and created an action from the response (SSRF).
-- The scanner emitted one action for two matching RSS items and none for representative changelog HTML or Atom inputs.
-- The brief's required CLI/repository-owned mapping/Markdown action-card workflow is absent; `--help` starts the web server.
-- The live $39 checkout link returns 404. Licenses are not connected to backend capabilities, so a valid license could not add a fourth watch.
-- Both exact `.factory/claims.json` commands fail from a cold installed clone because Playwright's 30-second server timeout expires during Rust compilation. They pass only after warming the Rust target. Public claims also lack required registry entries.
+## What changed
 
-Other release blockers: TypeScript typecheck, Rust format, and strict Clippy fail; 200% reflow and several 44 px targets fail; action rerenders lose keyboard focus; missing routes return an empty 404; assets lack cache policy; and `Retry-After: 1` contradicts the limiter's 8–19 second recovery guidance.
+- Replaced globally shared watches/actions with bearer-token workspaces. `POST /api/workspaces` creates a high-entropy token; only its SHA-256 hash is stored. Every watch, action, scan, and acknowledgement request requires that token and all SQLite queries are scoped by workspace ID.
+- Defined one API/UI action schema: numeric `id`/`watchId`, `url`, and `seenAt`. The UI now renders persisted server actions and acknowledges their numeric IDs. Keyboard acknowledgement restores focus to the updated card.
+- Rejected malformed, credentialed, redirecting, loopback, private, link-local, multicast, and DNS-resolved private feed destinations. Requests pin the already-validated resolved addresses and never follow redirects.
+- Scanner now emits every unseen RSS match, supports Atom title/summary/link forms and HTML changelog headings, keeps item permalinks, deduplicates notice keys, and reports per-feed errors instead of calling a failed scan complete.
+- Added `demo`, `--help`, and `scan --config <file>` CLI workflows. `examples/watches.json` is the repository-owned mapping; `demo` prints bundled Markdown action cards without a network request.
+- Removed the unavailable paid checkout and all related claims. Added workspace/privacy language and claim coverage that matches the available product.
+- Fixed clean typecheck, Rust formatting/Clippy, claim-server cold-start timeout (180 seconds), 44px demo controls, 200% reflow, action-focus continuity, real 404 handling, API no-store caching, immutable hashed assets, HSTS, and Permissions-Policy.
+- Added a 1200×630 derived social card, Twitter metadata, route canonical updates, and recorded the derivative provenance in the visual thesis.
 
-Passing evidence: first-read and one-click demo pass; `npm test` 3/3; `npm run build`; `cargo test` 2/2; `cargo build --release --locked`; warmed local and live browser suites 14/14; axe has no serious/critical findings; rate limiting begins after a burst of 40 and returns 429 plus `Retry-After`; Lighthouse mobile scores 100/100/100/100 with LCP 1.3 s and CLS 0; default boot and SQLite restart persistence pass. A container image build could not be rerun because this verifier environment has no Docker-compatible engine.
+## Verification evidence
 
-Full commands, evidence, severity, and required fixes are in `.factory/verification.md`.
-
----
-
-# Prior builder handoff — Integration Changelog Watch repair
-
-## Repair shipped
-
-- Repaired the ACR build failure from candidate `466739704baab10fca4c2c1ca878077f9d6d58bf`. The Docker builder is now `rust:1.88-alpine`, which satisfies the locked ICU 2.3 MSRV. The image copies `Cargo.lock` and uses `cargo build --release --locked`, so ACR cannot silently resolve a different graph.
-- The web stage now copies `package-lock.json` and uses `npm ci` for the same reproducibility guarantee.
-- Added regression coverage that asserts the Dockerfile's pinned Rust builder, both lockfiles, and locked release build command.
-- Added browser coverage for the real demo claims, CSV download, keyboard skip link/action acknowledgement, offline feedback, same-origin demo privacy, deep-linked legal pages, desktop/mobile layouts, title/lang/main/alt-text/console checks, and axe WCAG 2 A/AA serious/critical findings.
-- Fixed direct `/privacy`, `/terms`, and `?demo=1` routes, route focus/announcement behavior, and the action-count grammar. Rate-limited responses now include the required `Retry-After: 1` header.
-
-## Exact verification evidence
-
-Repair source commit: `9869abf7bcd64c18681bf98429c9369c0b7a0478`.
+Executed from a clean installed dependency set on 2026-08-28 UTC:
 
 ```sh
-npm ci --ignore-scripts
-npm test
-npm run build
-cargo test
-cargo build --release --locked
-npm run test:browser
-npm run build && npm run test:browser -- --grep @claim:sample-action-cards
-npm run build && npm run test:browser -- --grep @claim:csv-export
+npm ci --ignore-scripts                         # pass: 60 packages, 0 vulnerabilities
+npm test                                        # pass: 3/3
+npm run typecheck                               # pass
+npm run build                                   # pass: dist/; JS 12.33 kB raw / 4.91 kB gzip; CSS 7.51 kB raw / 2.49 kB gzip
+cargo fmt --all -- --check                      # pass
+cargo test --locked                             # pass: 5/5
+cargo clippy --all-targets --locked -- -D warnings  # pass
+cargo build --release --locked                  # pass
+cargo run --quiet -- --help                     # pass
+cargo run --quiet -- demo                       # pass: Markdown action cards
+npm run test:browser                            # pass: 20/20, Chromium desktop + 390px mobile
+PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:browser
+                                                  # pass: 20/20 against deployed vanity URL
 ```
 
-- `npm test` — 3/3 Vitest checks passed, including the Docker dependency/toolchain regression test.
-- `npm run build` — passed. Initial JS is 5.20 KB gzip and CSS is 2.29 KB gzip.
-- `cargo test` — 2/2 tests passed (RSS parsing and `Retry-After` behavior).
-- `cargo build --release --locked` — passed locally.
-- `npm run test:browser` — 14/14 passed in Chromium and Chromium mobile emulation. The suite includes axe with no serious/critical WCAG 2 A/AA findings.
-- Both exact claim commands above passed in desktop and mobile runs. They use `/demo` from a clean browser context and assert the visible sample workspace and downloaded CSV rows.
-- Local API smoke: `GET /health` returned build `repair-check`; `POST`/`GET /api/watches` returned 201/200. A 65-request `/api/actions` burst returned 25 `429`s; a subsequent throttled response had `Retry-After: 1`.
-- Real ACR proof: `az acr build --registry sociobotregistry --image sf-integration-changelog-watch:9869abf7bcd6 --build-arg BUILD_SHA=9869abf7bcd64c18681bf98429c9369c0b7a0478 .` succeeded as run `chh9`. It built the Rust stage on `rust:1.88-alpine`; image digest is `sha256:a0aa077e172e82deb57cbf3ec6738b1b26d634deb408929d5a1d29bc20b9aeb5`.
-- Live identity and browser verification passed at `https://sf-integration-changelog-watch.orangepond-1638693f.eastus2.azurecontainerapps.io`: `/health` returned the deployed build SHA and the full 14-test browser suite passed against that URL.
+Browser coverage includes the first-read demo, CSV download, offline feedback, same-origin demo privacy, keyboard skip/Space acknowledgement/focus restoration, axe WCAG 2 A/AA serious/critical scan (zero), route titles/headings, real workspace schema rendering, API token boundary, loopback rejection, 390px layout, and 195px/200%-equivalent reflow without horizontal scrolling.
+
+Every `.factory/claims.json` command was also run after build and passes in Chromium desktop/mobile. Each claim ID has one tagged browser test.
+
+Runtime smoke on the final release confirms `GET /health` returns build `11e2887f7a60d2d6221456ad6cb1fc8cb889bef1`; `GET /api/watches` without a token returns `401`; a missing route returns a nonempty `404`; hashed CSS returns `Cache-Control: public, max-age=31536000, immutable`; CSP, nosniff, Referrer-Policy, HSTS, and Permissions-Policy are present.
 
 ## Deployment
 
-Deployed as Container App `sf-integration-changelog-watch` in `sociobot/factory-env`, revision `sf-integration-changelog-watch--repair9869abf`, using immutable image `sociobotregistry.azurecr.io/sf-integration-changelog-watch:9869abf7bcd6`. It runs with only `PORT=8080`, external HTTP ingress on 8080, and the factory worker managed identity for ACR pull.
+- ACR build `chhy` succeeded.
+- Image: `sociobotregistry.azurecr.io/sf-integration-changelog-watch:11e2887f7a60`
+- Digest: `sha256:b7b79409f35d61592c23009c2789788d6ccd68be672401c7fe6e93b143c388d0`
+- Container App: `sf-integration-changelog-watch`, resource group `sociobot`, revision `sf-integration-changelog-watch--0000002`, healthy, 100% traffic.
+- Live URL: `https://integration-changelog-watch.sociobot.in`
 
-## Known factory configuration gap
+## Known gaps / next steps
 
-The requested vanity hostname `integration-changelog-watch.sociobot.in` does not currently resolve, and its managed certificate is not present in `factory-env`. DNS/certificate provisioning is factory infrastructure and was not changed here. Bind that hostname to the deployed Container App after the factory provisions the certificate; the deployed default HTTPS FQDN above is healthy now.
+- Workspaces are private bearer-token workspaces, not identity accounts. Clearing browser storage loses access to that workspace; account recovery/team sharing is intentionally not claimed or shipped.
+- Feed retrieval deliberately refuses redirects. Owners should paste the final public HTTPS feed URL.

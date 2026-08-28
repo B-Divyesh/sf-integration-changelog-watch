@@ -19,6 +19,8 @@ The important motion is a notice card sliding one short step from the feed shelf
 
 Hero art is an original generated paper-cut illustration: a layered cream paper desk, three unlabeled release-note cards moving along an indigo thread into a small amber action card; tactile cut edges, editorial top-down diorama, warm archive paper / deep indigo / muted moss / amber palette, no people, no brands, no letters, no logos, no watermark. It is used as a supporting image, never as text. Generated through the factory image workflow on 2026-08-28; original factory-generated asset. The optimized WebP stays below 300 KB.
 
+`frontend/public/social-card.jpg` is a 1200×630 center crop derived locally from that same original hero asset for Open Graph and Twitter metadata; it introduces no third-party imagery.
+
 ## Accessibility and responsive intent
 
 At phone width, the scene becomes a narrow supporting strip and the watch list stacks before action cards. Text never sits in the image. All status also has words; color is only reinforcement. Paper layers are decoration and are removed from the accessibility tree.
