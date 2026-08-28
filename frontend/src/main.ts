@@ -10,6 +10,8 @@ let demo = location.pathname === '/demo' || new URLSearchParams(location.search)
 let watches: Watch[] = []
 let actions: Action[] = []
 let active = 'home'
+let statusMessage = ''
+let workspacePromise: Promise<string> | undefined
 const storageKey = () => (demo ? demoKey : realKey)
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!))
 
@@ -33,11 +35,19 @@ function save() {
 async function ensureWorkspace() {
   let token = localStorage.getItem(workspaceKey)
   if (token) return token
-  const response = await fetch('/api/workspaces', { method: 'POST' })
-  if (!response.ok) throw new Error('Could not create a private workspace.')
-  token = (await response.json() as { token: string }).token
-  localStorage.setItem(workspaceKey, token)
-  return token
+  workspacePromise ??= (async () => {
+    const response = await fetch('/api/workspaces', { method: 'POST' })
+    if (!response.ok) throw new Error('Could not create a private workspace.')
+    const created = (await response.json() as { token: string }).token
+    localStorage.setItem(workspaceKey, created)
+    return created
+  })()
+  try {
+    return await workspacePromise
+  } catch (error) {
+    workspacePromise = undefined
+    throw error
+  }
 }
 
 async function api(path: string, init: RequestInit = {}) {
@@ -57,8 +67,9 @@ async function hydrateReal() {
     save()
     render()
   } catch {
+    statusMessage = 'Your private workspace could not load. Check your connection, then reload.'
     const notice = document.querySelector<HTMLElement>('#notice')
-    if (notice) notice.textContent = 'Your private workspace could not load. Check your connection, then reload.'
+    if (notice) notice.textContent = statusMessage
   }
 }
 
@@ -68,7 +79,7 @@ function actionCard(action: Action) {
 
 function dashboard() {
   const pending = actions.filter(action => !action.acknowledged)
-  return `<section class="dashboard" aria-labelledby="action-heading"><div class="dash-head"><div><p class="eyebrow">Your owned queue</p><h2 id="action-heading">${pending.length ? `${pending.length} action${pending.length === 1 ? ' needs' : 's need'} an owner` : 'No actions need an owner'}</h2></div><div class="dash-buttons"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div></div><p id="notice" class="notice" role="status" aria-live="polite"></p><div class="dash-grid"><section><h3>Action cards</h3><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Add a feed, rule, owner, and check command. Matched release notes will appear here.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section><aside class="watches" aria-label="Watched feeds"><div class="side-title"><h3>Watched feeds</h3><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>${escape(watch.keywords)}</small></article>`).join('') : '<p>Nothing is watched yet.</p>'}<button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></aside></div></section>`
+  return `<section class="dashboard" aria-labelledby="action-heading"><div class="dash-head"><div><p class="eyebrow">Your owned queue</p><h2 id="action-heading">${pending.length ? `${pending.length} action${pending.length === 1 ? ' needs' : 's need'} an owner` : 'No actions need an owner'}</h2></div><div class="dash-buttons"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div></div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p><div class="dash-grid"><section><h3>Action cards</h3><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Add a feed, rule, owner, and check command. Matched release notes will appear here.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section><aside class="watches" aria-label="Watched feeds"><div class="side-title"><h3>Watched feeds</h3><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>${escape(watch.keywords)}</small><span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></aside></div></section>`
 }
 
 function home() {
@@ -104,28 +115,56 @@ function navigate(path: string) {
 }
 
 async function addWatch() {
-  const vendor = prompt('Vendor name')
+  await saveWatch()
+}
+
+async function saveWatch(existing?: Watch) {
+  const vendor = prompt('Vendor name', existing?.vendor || '')
   if (!vendor) return
-  const url = prompt('Public RSS or changelog URL')
+  const url = prompt('Public RSS or changelog URL', existing?.url || '')
   if (!url) return
-  const keywords = prompt('Keywords, separated by commas', 'breaking,deprecation') || ''
-  const owner = prompt('Owner', 'Integration owner') || ''
-  const command = prompt('Local check command', 'npm test') || ''
-  const watch: Watch = { id: crypto.randomUUID(), vendor, url, keywords, owner, version: '', command }
+  const keywords = prompt('Keywords, separated by commas', existing?.keywords || 'breaking,deprecation') || ''
+  const owner = prompt('Owner', existing?.owner || 'Integration owner') || ''
+  const command = prompt('Local check command', existing?.command || 'npm test') || ''
+  const watch: Watch = { id: existing?.id || crypto.randomUUID(), vendor, url, keywords, owner, version: existing?.version || '', command }
   if (!demo) {
     try {
-      const response = await api('/api/watches', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(watch) })
+      const response = await api(existing ? `/api/watches/${existing.id}` : '/api/watches', { method: existing ? 'PUT' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(watch) })
       if (!response.ok) throw new Error(await response.text())
+      statusMessage = existing ? `Updated ${vendor}. Scan it when you are ready.` : `Saved ${vendor}. Scan it when you are ready.`
       await hydrateReal()
       return
     } catch (error) {
-      alert(`This watch was not saved. ${error instanceof Error ? error.message : 'Try again.'}`)
+      statusMessage = `This watch was not saved. ${error instanceof Error ? error.message : 'Try again.'}`
+      render()
       return
     }
   }
-  watches.push(watch)
+  if (existing) watches = watches.map(item => String(item.id) === String(existing.id) ? watch : item)
+  else watches.push(watch)
   save()
   render()
+}
+
+async function removeWatch(watch: Watch) {
+  if (!confirm(`Remove ${watch.vendor}? Its action cards will also be removed.`)) return
+  if (demo) {
+    watches = watches.filter(item => String(item.id) !== String(watch.id))
+    actions = actions.filter(item => String(item.watchId) !== String(watch.id))
+    statusMessage = `Removed ${watch.vendor} from this sample.`
+    save()
+    render()
+    return
+  }
+  try {
+    const response = await api(`/api/watches/${watch.id}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error(await response.text())
+    statusMessage = `Removed ${watch.vendor}. You can add another watch.`
+    await hydrateReal()
+  } catch (error) {
+    statusMessage = `This watch was not removed. ${error instanceof Error ? error.message : 'Try again.'}`
+    render()
+  }
 }
 
 function csv() {
@@ -143,6 +182,14 @@ function bind() {
   }))
   document.querySelector('#try-demo')?.addEventListener('click', () => navigate('/demo'))
   document.querySelector('#add-watch, #empty-add')?.addEventListener('click', () => void addWatch())
+  document.querySelectorAll<HTMLButtonElement>('.edit-watch').forEach(button => button.addEventListener('click', () => {
+    const watch = watches.find(item => String(item.id) === button.dataset.watch)
+    if (watch) void saveWatch(watch)
+  }))
+  document.querySelectorAll<HTMLButtonElement>('.delete-watch').forEach(button => button.addEventListener('click', () => {
+    const watch = watches.find(item => String(item.id) === button.dataset.watch)
+    if (watch) void removeWatch(watch)
+  }))
   document.querySelector('#reset-demo')?.addEventListener('click', () => { localStorage.removeItem(demoKey); load(); render() })
   document.querySelector('#start-real')?.addEventListener('click', () => { localStorage.removeItem(demoKey); navigate('/') })
   document.querySelectorAll<HTMLButtonElement>('.ack').forEach(button => button.addEventListener('click', async () => {
@@ -150,7 +197,7 @@ function bind() {
     if (!action) return
     if (!demo) {
       const response = await api(`/api/actions/${action.id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ acknowledged: true }) })
-      if (!response.ok) { document.querySelector('#notice')!.textContent = 'The action was not acknowledged. Reload and try again.'; return }
+      if (!response.ok) { statusMessage = 'The action was not acknowledged. Reload and try again.'; render(); return }
       await hydrateReal()
     } else {
       action.acknowledged = true
@@ -163,16 +210,19 @@ function bind() {
   document.querySelector('#export')?.addEventListener('click', csv)
   document.querySelector('#scan')?.addEventListener('click', async () => {
     const notice = document.querySelector<HTMLElement>('#notice')!
-    notice.textContent = navigator.onLine ? 'Scanning public feeds…' : 'You are offline. Connect, then scan again.'
+    statusMessage = navigator.onLine ? 'Scanning public feeds…' : 'You are offline. Connect, then scan again.'
+    notice.textContent = statusMessage
     if (!navigator.onLine) return
-    if (demo) { setTimeout(() => { notice.textContent = 'No new matched notices were found. Your existing action cards remain.' }, 450); return }
+    if (demo) { setTimeout(() => { statusMessage = 'No new matched notices were found. Your existing action cards remain.'; notice.textContent = statusMessage }, 450); return }
     try {
       const response = await api('/api/scan', { method: 'POST' })
       const result = await response.json() as { message?: string; failures?: string[] }
-      notice.textContent = result.failures?.length ? `${result.message} ${result.failures.join(' ')}` : result.message || 'The scan did not finish. Check the feed address, then try again.'
+      statusMessage = result.failures?.length ? `${result.message} ${result.failures.join(' ')}` : result.message || 'The scan did not finish. Check the feed address, then try again.'
+      notice.textContent = statusMessage
       await hydrateReal()
     } catch {
-      notice.textContent = 'The scan did not finish. Check the feed address, then try again.'
+      statusMessage = 'The scan did not finish. Check the feed address, then try again.'
+      notice.textContent = statusMessage
     }
   })
 }

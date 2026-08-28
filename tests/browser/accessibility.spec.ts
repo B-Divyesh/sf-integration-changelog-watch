@@ -28,3 +28,12 @@ test('demo reflows without horizontal scrolling at 200% equivalent width', async
   const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }))
   expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport)
 })
+
+test('missing routes return the product-styled 404 screen', async ({ page }) => {
+  const response = await page.goto('/missing-action-board')
+  expect(response?.status()).toBe(404)
+  await expect(page).toHaveTitle('Page not found — Integration Changelog Watch')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('That page is not here')
+  await expect(page.getByRole('link', { name: 'Return home' })).toBeVisible()
+  await expect(page.locator('link[href="/404.css"]')).toHaveCount(1)
+})

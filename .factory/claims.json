@@ -15,16 +15,37 @@
   },
   {
     "id": "demo-local",
-    "claim": "Demo data is separate from the real workspace and makes only same-origin requests.",
+    "claim": "Demo data is separate from the real workspace; no analytics, advertising scripts, or third-party fonts run.",
     "where": "demo banner and privacy page",
     "test": "npm run build && npm run test:browser -- --grep @claim:demo-local",
     "sandbox": "fresh demo browser context; acknowledge a sample card and inspect storage and requests"
   },
   {
     "id": "workspace-boundary",
-    "claim": "Private workspace tokens separate visitors, and private feed addresses are blocked.",
+    "claim": "Workspace endpoints require a browser-held token, and private feed addresses are blocked.",
     "where": "landing fact and privacy/terms pages",
     "test": "npm run build && npm run test:browser -- --grep @claim:workspace-boundary",
     "sandbox": "fresh browser context creates a workspace, then attempts unauthenticated and loopback API access"
+  },
+  {
+    "id": "requested-scans",
+    "claim": "Scans run only when you request them.",
+    "where": "landing page",
+    "test": "npm run build && npm run test:browser -- --grep @claim:requested-scans",
+    "sandbox": "fresh real workspace; record requests before and after explicitly pressing Scan watched feeds"
+  },
+  {
+    "id": "cli-repository-workflow",
+    "claim": "The CLI stores deduplicated Markdown action cards and acknowledgement state beside a repository mapping.",
+    "where": "README CLI section",
+    "test": "npm run build && npm run test:browser -- --grep @claim:cli-repository-workflow",
+    "sandbox": "temporary repository mapping with a local shipped-format feed; scan twice, inspect state and card, then acknowledge it"
+  },
+  {
+    "id": "database-persistence",
+    "claim": "The default SQLite database survives restarts when /data is mounted.",
+    "where": "README deployment section",
+    "test": "cargo test --locked default_database_survives_restart_when_data_is_mounted",
+    "sandbox": "temporary SQLite file configured at a mounted-data equivalent path; write a workspace, reconnect, and read it"
   }
 ]

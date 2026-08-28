@@ -98,6 +98,9 @@ header {
     700 20px Georgia,
     serif;
   text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 .wordmark span {
   color: var(--amber);
@@ -323,6 +326,16 @@ code {
   padding: 13px 0;
   border-bottom: 1px solid var(--line);
   gap: 2px;
+}
+.watch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.watch-controls .text-button {
+  min-height: 44px;
+  padding: 8px 2px;
 }
 .watches strong,
 .watches span,

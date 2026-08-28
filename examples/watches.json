@@ -1,8 +1,8 @@
 {
   "watches": [
     {
-      "vendor": "Stripe",
-      "url": "https://docs.stripe.com/changelog/rss.xml",
+      "vendor": "Sample Payments",
+      "url": "sample-feed.xml",
       "keywords": "webhook,deprecation,breaking",
       "owner": "Maya · Payments",
       "version": "stripe-node 16.2",

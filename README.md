@@ -18,7 +18,7 @@ Open `http://localhost:8080/demo` for a one-click sandbox. Demo data uses the `d
 
 ## Workspace API
 
-The container exposes `GET /health`, `POST /api/workspaces`, `GET|POST /api/watches`, `GET /api/actions`, `POST /api/actions/:id`, and `POST /api/scan`. Create a workspace first, then send its browser-held bearer token with every workspace request. Source URLs must be public `http` or `https` addresses; private, loopback, link-local, credentialed, and redirecting sources are rejected.
+The container exposes `GET /health`, `POST /api/workspaces`, `GET|POST /api/watches`, `PUT|DELETE /api/watches/:id`, `GET /api/actions`, `POST /api/actions/:id`, and `POST /api/scan`. Create a workspace first, then send its browser-held bearer token with every workspace request. Source URLs must be public `http` or `https` addresses; private network addresses are rejected.
 
 ## CLI demo
 
@@ -28,11 +28,11 @@ cargo run -- --help
 cargo run -- scan --config examples/watches.json
 ```
 
-`demo` prints the bundled Markdown action-card sample without starting a server or contacting a feed. `scan --config` reads a repository-owned JSON watch mapping and writes matching Markdown action cards to standard output.
+`demo` prints the bundled Markdown action-card sample. `scan --config` reads a repository-owned JSON watch mapping, writes new Markdown action cards under `.integration-changelog-watch/actions/`, and stores hashes plus acknowledgement state in `.integration-changelog-watch/state.json`. The shipped example uses the bundled `examples/sample-feed.xml`, so it works without a network request.
 
 ## Deploy
 
-Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses Rust 1.88 because the locked ICU dependency family requires it, and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`) and persists its SQLite database at `/data/changelog-watch.db` when that directory is mounted.
+Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`) and persists its SQLite database at `/data/changelog-watch.db` when that directory is mounted.
 
 See `/privacy` and `/terms` for data handling and source rules.
 

@@ -1,9 +1,9 @@
 use axum::{
-    extract::{Path, State},
+    extract::{ConnectInfo, Path, State},
     http::{header, HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use chrono::Utc;
@@ -13,12 +13,12 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::{sqlite::SqlitePoolOptions, FromRow, SqlitePool};
 use std::{
+    collections::HashMap,
     env,
     net::{IpAddr, SocketAddr},
+    path::{Path as FilePath, PathBuf},
+    sync::{Arc, Mutex},
     time::Duration,
-};
-use tower_governor::{
-    governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -29,6 +29,13 @@ use uuid::Uuid;
 struct App {
     db: SqlitePool,
     build: String,
+    limiter: Arc<Mutex<HashMap<IpAddr, RateBucket>>>,
+}
+
+#[derive(Clone, Copy)]
+struct RateBucket {
+    tokens: f64,
+    refreshed: std::time::Instant,
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -90,6 +97,20 @@ struct ScanResult {
 #[derive(Deserialize)]
 struct CliConfig {
     watches: Vec<NewWatch>,
+    #[serde(default)]
+    state_dir: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct CliState {
+    actions: Vec<CliAction>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CliAction {
+    id: String,
+    notice_hash: String,
+    acknowledged: bool,
 }
 
 #[derive(Debug)]
@@ -137,13 +158,38 @@ async fn main() {
         eprintln!("scan needs --config <path>");
         std::process::exit(2);
     }
+    if args.first().is_some_and(|arg| arg == "ack") {
+        let config = args
+            .windows(2)
+            .find(|pair| pair[0] == "--config")
+            .map(|pair| pair[1].clone());
+        let action = args
+            .windows(2)
+            .find(|pair| pair[0] == "--id")
+            .map(|pair| pair[1].clone());
+        match (config, action) {
+            (Some(path), Some(id)) => {
+                if let Err(error) = cli_ack(&path, &id) {
+                    eprintln!("ack failed: {error}");
+                    std::process::exit(1);
+                }
+                return;
+            }
+            _ => {
+                eprintln!("ack needs --config <path> and --id <action-id>");
+                std::process::exit(2);
+            }
+        }
+    }
 
     tracing_subscriber::fmt()
         .json()
         .with_env_filter("info")
         .init();
-    let db_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite:/data/changelog-watch.db?mode=rwc".to_owned());
+    let supplied_database_url = env::var("DATABASE_URL").ok();
+    let db_url = supplied_database_url
+        .clone()
+        .unwrap_or_else(default_database_url);
     let db = match SqlitePoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
@@ -159,28 +205,26 @@ async fn main() {
     let state = App {
         db,
         build: env::var("BUILD_SHA").unwrap_or_else(|_| "dev".to_owned()),
+        limiter: Arc::new(Mutex::new(HashMap::new())),
     };
     info!(
-        config = "DATABASE_URL defaulted when absent",
+        database_url = if supplied_database_url.is_some() {
+            "supplied"
+        } else {
+            "defaulted"
+        },
         "starting Integration Changelog Watch"
     );
 
-    let governor = GovernorConfigBuilder::default()
-        .per_second(20)
-        .burst_size(40)
-        .key_extractor(SmartIpKeyExtractor)
-        .finish()
-        .expect("rate limiter config");
     let api = Router::new()
         .route("/health", get(health))
         .route("/api/workspaces", post(create_workspace))
         .route("/api/watches", get(list_watches).post(add_watch))
+        .route("/api/watches/:id", put(update_watch).delete(delete_watch))
         .route("/api/actions", get(list_actions))
         .route("/api/actions/:id", post(ack_action))
         .route("/api/scan", post(scan))
-        .layer(GovernorLayer {
-            config: governor.into(),
-        })
+        .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .layer(middleware::from_fn(api_cache_headers))
         .with_state(state);
 
@@ -203,6 +247,7 @@ async fn main() {
         )
         .route_service("/robots.txt", ServeFile::new("dist/robots.txt"))
         .route_service("/sitemap.xml", ServeFile::new("dist/sitemap.xml"))
+        .route_service("/404.css", ServeFile::new("dist/404.css"))
         .fallback(not_found)
         .layer(middleware::from_fn(site_headers));
     let port = env::var("PORT")
@@ -219,6 +264,10 @@ async fn main() {
     )
     .await
     .expect("serve");
+}
+
+fn default_database_url() -> String {
+    "sqlite:/data/changelog-watch.db?mode=rwc".to_owned()
 }
 
 async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -306,6 +355,57 @@ async fn add_watch(
     let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
         .bind(id).bind(workspace).fetch_one(&app.db).await.map_err(internal)?;
     Ok((StatusCode::CREATED, Json(watch)))
+}
+
+async fn update_watch(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(new): Json<NewWatch>,
+) -> ApiResult<Json<Watch>> {
+    let workspace = workspace_id(&headers, &app).await?;
+    validate_watch(&new).await?;
+    let changed = sqlx::query("UPDATE workspace_watches SET vendor=?,url=?,keywords=?,owner=?,version=?,command=?,last_hash=NULL,last_scanned=NULL WHERE id=? AND workspace_id=?")
+        .bind(&new.vendor).bind(&new.url).bind(&new.keywords).bind(&new.owner).bind(&new.version).bind(&new.command).bind(id).bind(workspace)
+        .execute(&app.db).await.map_err(internal)?;
+    if changed.rows_affected() != 1 {
+        return Err(ApiError(
+            StatusCode::NOT_FOUND,
+            "That watch does not exist in this workspace.".to_owned(),
+        ));
+    }
+    let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
+        .bind(id).bind(workspace).fetch_one(&app.db).await.map_err(internal)?;
+    Ok(Json(watch))
+}
+
+async fn delete_watch(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> ApiResult<StatusCode> {
+    let workspace = workspace_id(&headers, &app).await?;
+    let mut tx = app.db.begin().await.map_err(internal)?;
+    sqlx::query("DELETE FROM workspace_actions WHERE watch_id=? AND workspace_id=?")
+        .bind(id)
+        .bind(workspace)
+        .execute(&mut *tx)
+        .await
+        .map_err(internal)?;
+    let changed = sqlx::query("DELETE FROM workspace_watches WHERE id=? AND workspace_id=?")
+        .bind(id)
+        .bind(workspace)
+        .execute(&mut *tx)
+        .await
+        .map_err(internal)?;
+    if changed.rows_affected() != 1 {
+        return Err(ApiError(
+            StatusCode::NOT_FOUND,
+            "That watch does not exist in this workspace.".to_owned(),
+        ));
+    }
+    tx.commit().await.map_err(internal)?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn list_actions(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Vec<Action>>> {
@@ -518,6 +618,20 @@ async fn validate_watch(watch: &NewWatch) -> ApiResult<()> {
             "Provide a vendor, public URL, rules, owner, and check command.".to_owned(),
         ));
     }
+    let fields = [
+        ("vendor", watch.vendor.len(), 120usize),
+        ("public URL", watch.url.len(), 2048),
+        ("rules", watch.keywords.len(), 500),
+        ("owner", watch.owner.len(), 160),
+        ("version", watch.version.len(), 120),
+        ("check command", watch.command.len(), 500),
+    ];
+    if let Some((name, _, limit)) = fields.into_iter().find(|(_, size, limit)| size > limit) {
+        return Err(ApiError(
+            StatusCode::BAD_REQUEST,
+            format!("The {name} is too long. Keep it to {limit} characters or fewer."),
+        ));
+    }
     resolve_public_url(&watch.url)
         .await
         .map(|_| ())
@@ -608,17 +722,58 @@ fn internal(_: sqlx::Error) -> ApiError {
     )
 }
 
+/// Rate-limit from the TCP peer that the factory ingress opens to this container.
+/// We deliberately ignore `X-Forwarded-For`: accepting a client supplied value
+/// would let a caller select a fresh bucket for every request.
+async fn rate_limit(
+    State(app): State<App>,
+    request: Request<axum::body::Body>,
+    next: Next,
+) -> Response {
+    let peer = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|peer| peer.0.ip())
+        // This fallback keeps a direct unit/router invocation bounded as well.
+        .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
+    let now = std::time::Instant::now();
+    let retry_after = {
+        let mut buckets = app.limiter.lock().expect("rate limiter mutex");
+        let bucket = buckets.entry(peer).or_insert(RateBucket {
+            tokens: 40.0,
+            refreshed: now,
+        });
+        let elapsed = now.duration_since(bucket.refreshed).as_secs_f64();
+        bucket.tokens = (bucket.tokens + elapsed * 20.0).min(40.0);
+        bucket.refreshed = now;
+        if bucket.tokens >= 1.0 {
+            bucket.tokens -= 1.0;
+            None
+        } else {
+            Some(((1.0 - bucket.tokens) / 20.0).ceil().max(1.0) as u64)
+        }
+    };
+    if let Some(seconds) = retry_after {
+        let mut response = (
+            StatusCode::TOO_MANY_REQUESTS,
+            format!("Too many requests. Try again in {seconds} second(s)."),
+        )
+            .into_response();
+        response.headers_mut().insert(
+            header::RETRY_AFTER,
+            HeaderValue::from_str(&seconds.to_string()).expect("retry header"),
+        );
+        return response;
+    }
+    next.run(request).await
+}
+
 async fn api_cache_headers(request: Request<axum::body::Body>, next: Next) -> Response {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::CACHE_CONTROL,
         HeaderValue::from_static("no-store, private"),
     );
-    if response.status() == StatusCode::TOO_MANY_REQUESTS {
-        response
-            .headers_mut()
-            .insert(header::RETRY_AFTER, HeaderValue::from_static("1"));
-    }
     response
 }
 
@@ -657,11 +812,16 @@ async fn site_headers(request: Request<axum::body::Body>, next: Next) -> Respons
 }
 
 async fn not_found() -> impl IntoResponse {
-    (StatusCode::NOT_FOUND, [(header::CONTENT_TYPE, "text/html; charset=utf-8")], "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Page not found — Integration Changelog Watch</title></head><body><main id=\"main\"><h1>That page is not here</h1><p>Return to your integration action board.</p><p><a href=\"/\">Return home</a></p></main></body></html>")
+    let page = std::fs::read_to_string("dist/404.html").unwrap_or_else(|_| "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Page not found — Integration Changelog Watch</title></head><body><main id=\"main\"><h1>That page is not here</h1><p><a href=\"/\">Return home</a></p></main></body></html>".to_owned());
+    (
+        StatusCode::NOT_FOUND,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        page,
+    )
 }
 
 fn print_help() {
-    println!("Integration Changelog Watch\n\nUsage:\n  integration-changelog-watch                         Start the dashboard server\n  integration-changelog-watch demo                    Print shipped Markdown action cards\n  integration-changelog-watch scan --config FILE     Scan a repository watch mapping to Markdown\n  integration-changelog-watch --help                  Show this help\n\nThe dashboard uses a private browser workspace token. The demo command makes no network request.");
+    println!("Integration Changelog Watch\n\nUsage:\n  integration-changelog-watch                         Start the dashboard server\n  integration-changelog-watch demo                    Print shipped Markdown action cards\n  integration-changelog-watch scan --config FILE     Scan a repository watch mapping into Markdown files\n  integration-changelog-watch ack --config FILE --id ID  Record an action acknowledgement\n  integration-changelog-watch --help                  Show this help\n\nThe dashboard uses a private browser workspace token. The demo command makes no network request.");
 }
 
 fn print_demo_markdown() {
@@ -672,10 +832,13 @@ async fn cli_scan(path: &str) -> Result<(), String> {
     let source = std::fs::read_to_string(path).map_err(|_| format!("could not read {path}"))?;
     let config: CliConfig = serde_json::from_str(&source)
         .map_err(|_| "the watch mapping is not valid JSON".to_owned())?;
+    let config_path = FilePath::new(path);
+    let config_dir = config_path.parent().unwrap_or_else(|| FilePath::new("."));
+    let state_dir = cli_state_dir(config_dir, config.state_dir.as_deref());
+    let mut state = read_cli_state(&state_dir)?;
     let mut cards = Vec::new();
-    for watch in config.watches {
-        validate_watch(&watch).await.map_err(|error| error.1)?;
-        let text = fetch_public(&watch.url).await?;
+    for watch in &config.watches {
+        let text = cli_watch_text(watch, config_dir).await?;
         for notice in parse_notices(&text, &watch.url) {
             let body = format!("{} {}", notice.title, notice.excerpt).to_lowercase();
             if let Some(rule) = watch
@@ -689,21 +852,110 @@ async fn cli_scan(path: &str) -> Result<(), String> {
                 } else {
                     notice.title
                 };
-                cards.push(format!("## {title}\n\n- **Matched rule:** {rule}\n- **Owner:** {}\n- **Check:** `{}`\n- **Notice:** {}\n\n{}", watch.owner, watch.command, notice.url, notice.excerpt));
+                let notice_hash = format!(
+                    "{:x}",
+                    Sha256::digest(format!("{}\n{}", title, notice.url).as_bytes())
+                );
+                if state
+                    .actions
+                    .iter()
+                    .any(|action| action.notice_hash == notice_hash)
+                {
+                    continue;
+                }
+                let id = notice_hash[..12].to_owned();
+                let card = format!("# {title}\n\n- **Action ID:** `{id}`\n- **Status:** Needs owner\n- **Matched rule:** {rule}\n- **Owner:** {}\n- **Check:** `{}`\n- **Notice:** {}\n\n{}\n", watch.owner, watch.command, notice.url, notice.excerpt);
+                std::fs::create_dir_all(state_dir.join("actions")).map_err(|_| {
+                    "could not create the repository action-card directory".to_owned()
+                })?;
+                std::fs::write(state_dir.join("actions").join(format!("{id}.md")), &card)
+                    .map_err(|_| "could not write the repository action card".to_owned())?;
+                state.actions.push(CliAction {
+                    id: id.clone(),
+                    notice_hash,
+                    acknowledged: false,
+                });
+                cards.push(format!(
+                    "Created {}",
+                    state_dir.join("actions").join(format!("{id}.md")).display()
+                ));
             }
         }
     }
+    write_cli_state(&state_dir, &state)?;
     if cards.is_empty() {
-        println!("# Integration changelog scan\n\nNo matching notices found.");
+        println!("# Integration changelog scan\n\nNo new matching notices found.");
     } else {
-        println!("# Integration changelog scan\n\n{}", cards.join("\n\n"));
+        println!("# Integration changelog scan\n\n{}", cards.join("\n"));
     }
+    Ok(())
+}
+
+async fn cli_watch_text(watch: &NewWatch, config_dir: &FilePath) -> Result<String, String> {
+    if matches!(
+        Url::parse(&watch.url)
+            .ok()
+            .map(|url| url.scheme().to_owned())
+            .as_deref(),
+        Some("http") | Some("https")
+    ) {
+        validate_watch(watch).await.map_err(|error| error.1)?;
+        return fetch_public(&watch.url).await;
+    }
+    let local_path = config_dir.join(&watch.url);
+    std::fs::read_to_string(&local_path)
+        .map_err(|_| format!("could not read local feed fixture {}", local_path.display()))
+}
+
+fn cli_state_dir(config_dir: &FilePath, configured: Option<&str>) -> PathBuf {
+    configured
+        .map(|value| config_dir.join(value))
+        .unwrap_or_else(|| config_dir.join(".integration-changelog-watch"))
+}
+
+fn read_cli_state(state_dir: &FilePath) -> Result<CliState, String> {
+    let path = state_dir.join("state.json");
+    match std::fs::read_to_string(path) {
+        Ok(contents) => serde_json::from_str(&contents)
+            .map_err(|_| "the CLI state file is not valid JSON".to_owned()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(CliState::default()),
+        Err(_) => Err("could not read the CLI state file".to_owned()),
+    }
+}
+
+fn write_cli_state(state_dir: &FilePath, state: &CliState) -> Result<(), String> {
+    std::fs::create_dir_all(state_dir)
+        .map_err(|_| "could not create the CLI state directory".to_owned())?;
+    let json =
+        serde_json::to_string_pretty(state).map_err(|_| "could not encode CLI state".to_owned())?;
+    std::fs::write(state_dir.join("state.json"), format!("{json}\n"))
+        .map_err(|_| "could not write the CLI state file".to_owned())
+}
+
+fn cli_ack(path: &str, id: &str) -> Result<(), String> {
+    let source = std::fs::read_to_string(path).map_err(|_| format!("could not read {path}"))?;
+    let config: CliConfig = serde_json::from_str(&source)
+        .map_err(|_| "the watch mapping is not valid JSON".to_owned())?;
+    let config_dir = FilePath::new(path)
+        .parent()
+        .unwrap_or_else(|| FilePath::new("."));
+    let state_dir = cli_state_dir(config_dir, config.state_dir.as_deref());
+    let mut state = read_cli_state(&state_dir)?;
+    let action = state
+        .actions
+        .iter_mut()
+        .find(|action| action.id == id)
+        .ok_or_else(|| "that action ID does not exist in this repository state".to_owned())?;
+    action.acknowledged = true;
+    write_cli_state(&state_dir, &state)?;
+    println!("Acknowledged action {id}.");
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tower::ServiceExt;
 
     fn bearer(token: &str) -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -750,6 +1002,7 @@ mod tests {
         let app = App {
             db,
             build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
         };
         assert_eq!(
             list_watches(State(app.clone()), bearer(&second))
@@ -796,5 +1049,107 @@ mod tests {
     fn workspace_tokens_are_not_plaintext_rows() {
         let token = "a-very-long-workspace-token";
         assert_ne!(token_hash(token), token);
+    }
+
+    #[tokio::test]
+    async fn default_database_survives_restart_when_data_is_mounted() {
+        assert_eq!(
+            default_database_url(),
+            "sqlite:/data/changelog-watch.db?mode=rwc"
+        );
+        let root = std::env::temp_dir().join(format!("icw-data-test-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let database = root.join("changelog-watch.db");
+        let url = format!("sqlite:{}?mode=rwc", database.display());
+        let first = SqlitePoolOptions::new().connect(&url).await.unwrap();
+        setup(&first).await.unwrap();
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash("persisted-workspace-token"))
+            .bind("now")
+            .execute(&first)
+            .await
+            .unwrap();
+        first.close().await;
+        let second = SqlitePoolOptions::new().connect(&url).await.unwrap();
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM workspaces")
+            .fetch_one(&second)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+        second.close().await;
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn client_supplied_forwarding_header_cannot_select_a_new_rate_limit_bucket() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let state = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let app = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(state, rate_limit));
+        let mut allowed = 0;
+        let mut limited = 0;
+        for _ in 0..80 {
+            let mut request = Request::builder()
+                .uri("/")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            request
+                .headers_mut()
+                .insert("x-forwarded-for", "198.51.100.77".parse().unwrap());
+            request
+                .extensions_mut()
+                .insert(ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 4567))));
+            let response = app.clone().oneshot(request).await.unwrap();
+            if response.status().is_success() {
+                allowed += 1;
+            } else {
+                limited += 1;
+                assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+                assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "1");
+            }
+        }
+        assert_eq!((allowed, limited), (40, 40));
+    }
+
+    #[tokio::test]
+    async fn cli_scan_persists_deduplication_and_acknowledgements_for_local_repository_feeds() {
+        let root = std::env::temp_dir().join(format!("icw-cli-test-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("feed.xml"), "<rss><channel><item><title>Webhook update</title><description>Move webhook fixture</description><link>https://example.com/notice</link></item></channel></rss>").unwrap();
+        std::fs::write(root.join("watches.json"), r#"{"watches":[{"vendor":"Example","url":"feed.xml","keywords":"webhook","owner":"Maya","version":"","command":"npm test"}]}"#).unwrap();
+        let config = root.join("watches.json");
+        cli_scan(config.to_str().unwrap()).await.unwrap();
+        let state = read_cli_state(&root.join(".integration-changelog-watch")).unwrap();
+        assert_eq!(state.actions.len(), 1);
+        let id = state.actions[0].id.clone();
+        assert!(root
+            .join(".integration-changelog-watch/actions")
+            .join(format!("{id}.md"))
+            .exists());
+        cli_scan(config.to_str().unwrap()).await.unwrap();
+        assert_eq!(
+            read_cli_state(&root.join(".integration-changelog-watch"))
+                .unwrap()
+                .actions
+                .len(),
+            1
+        );
+        cli_ack(config.to_str().unwrap(), &id).unwrap();
+        assert!(
+            read_cli_state(&root.join(".integration-changelog-watch"))
+                .unwrap()
+                .actions[0]
+                .acknowledged
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
