@@ -1,4 +1,6 @@
 node_modules/
+target/
+changelog-watch.db
 dist/
 .env
 *.log
