@@ -1,0 +1,29 @@
+{
+  "requests": [
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/demo",
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/assets/index-CWYyw5pc.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/assets/index-CPi_kfO2.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/paper-cut-hero.webp",
+      "type": "image"
+    }
+  ],
+  "origins": [
+    "https://integration-changelog-watch.sociobot.in"
+  ],
+  "storage": {},
+  "cookies": []
+}

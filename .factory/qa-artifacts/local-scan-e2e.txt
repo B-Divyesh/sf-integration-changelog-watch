@@ -1,0 +1,34 @@
+{
+  "success": {
+    "status": 200,
+    "body": {
+      "new_actions": 10,
+      "failures": [],
+      "message": "Scan complete. 10 new action card(s)."
+    },
+    "notice": "",
+    "actions": 10,
+    "heading": "10 actions need an owner"
+  },
+  "persisted": {
+    "title": "Rule insights dashboard generally available",
+    "url": "https://github.blog/changelog/2026-08-25-rule-insights-dashboard-generally-available",
+    "stateBeforeReload": "Needs owner",
+    "stateAfterReload": "Needs owner",
+    "count": 10
+  },
+  "failure": {
+    "status": 200,
+    "body": {
+      "new_actions": 0,
+      "failures": [
+        "Missing Feed: The feed returned an error response."
+      ],
+      "message": "Scan finished with 1 feed error(s). Fix the listed address and scan again."
+    },
+    "notice": "",
+    "actions": 0,
+    "heading": "No actions need an owner"
+  },
+  "errors": []
+}

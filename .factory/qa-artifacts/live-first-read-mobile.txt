@@ -1,0 +1,12 @@
+{
+  "box": {
+    "x": 16,
+    "y": 373.9375,
+    "width": 241.671875,
+    "height": 46
+  },
+  "inFirstViewport": true,
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "firstText": "Skip to content\n▰ Changelog Watch\nDemo\nHow it works\nPrivacy\n\nINTEGRATION CHANGELOG WATCH\n\nTurn vendor changes into owned actions\n\nFor engineers who maintain payment, auth, analytics, or messaging integrations.\n\nTry it with sample data\nSee matched notices, owners, and checks.\nRules are written by your team.\nScans run only when you request them.\nYour workspace is separated from other visitors.\nOriginal paper-cut illustration.\n\nYour owned queue\n\nNo actions need an owner\nScan watched feeds\nAdd a watch\n\nAction cards\nNo action cards yet\n\nAdd a feed, rule, owner, and check command. Matched release notes will appear here.\n\nAdd your first watch\nWatched feeds\n0/3\n\nNothing is watched yet.\n\nExport action cards as CSV\n\nHow it works\n\nGive each vendor change a next step\nWatch a public feed.\nPaste a changelog or RSS address you are allowed to read.\nMatch your words.\nUse rules like “webhook”, “deprecatio"
+}

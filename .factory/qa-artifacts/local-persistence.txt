@@ -1,0 +1,5 @@
+Disposable SQLite restart smoke on port 8093:
+{
+  "afterRestartCount": 1,
+  "vendor": "Persistence vendor"
+}

@@ -1,0 +1,13 @@
+{
+  "summary": {
+    "200": 40,
+    "429": 20
+  },
+  "first429": {
+    "i": 40,
+    "status": 429,
+    "retry": "1",
+    "rateAfter": "19",
+    "body": "Too Many Requests! Wait for 19s"
+  }
+}

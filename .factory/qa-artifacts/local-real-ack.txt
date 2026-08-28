@@ -1,0 +1,7 @@
+{
+  "id": "60",
+  "title": "Rule insights dashboard generally available",
+  "status": "Acknowledged",
+  "focused": true,
+  "after": "Acknowledged"
+}

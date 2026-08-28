@@ -1,0 +1,8 @@
+Packed `integration-changelog-watch-1.0.0.crate`, extracted it into a clean temporary source directory, and installed it into a separate empty Cargo root.
+
+Result: install PASS. The installed binary's `--help` and `demo` commands exited 0 and printed the documented usage and two Markdown action cards.
+
+The installed real example scan was exercised separately and failed with:
+
+scan failed: The feed returned an error response.
+exit 1

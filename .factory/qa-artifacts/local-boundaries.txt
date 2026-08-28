@@ -1,0 +1,168 @@
+{
+  "noAuth": {
+    "status": 401,
+    "headers": {
+      "cache-control": "no-store, private",
+      "content-length": "62",
+      "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+      "content-type": "text/plain; charset=utf-8",
+      "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+      "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-content-type-options": "nosniff"
+    },
+    "text": "Create or restore this browser workspace before using the API."
+  },
+  "invalid": [
+    {
+      "url": "not a URL",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "42",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "Enter a complete public http or https URL."
+    },
+    {
+      "url": "ftp://example.com/feed",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "62",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "Enter a complete public http or https URL without credentials."
+    },
+    {
+      "url": "http://127.0.0.1:8091/health",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "86",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "Use a public internet address; private, loopback, and link-local networks are blocked."
+    },
+    {
+      "url": "http://169.254.169.254/latest/meta-data",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "86",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "Use a public internet address; private, loopback, and link-local networks are blocked."
+    },
+    {
+      "url": "http://[::1]:8091/health",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "36",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "The feed host could not be resolved."
+    },
+    {
+      "url": "http://[::ffff:127.0.0.1]:8091/health",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "36",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "The feed host could not be resolved."
+    },
+    {
+      "url": "https://user:pass@example.com/feed",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store, private",
+        "content-length": "62",
+        "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "x-content-type-options": "nosniff"
+      },
+      "text": "Enter a complete public http or https URL without credentials."
+    }
+  ],
+  "empty": {
+    "status": 400,
+    "headers": {
+      "cache-control": "no-store, private",
+      "content-length": "62",
+      "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+      "content-type": "text/plain; charset=utf-8",
+      "date": "Fri, 28 Aug 2026 19:11:24 GMT",
+      "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-content-type-options": "nosniff"
+    },
+    "text": "Provide a vendor, public URL, rules, owner, and check command."
+  },
+  "quota": [
+    {
+      "status": 201,
+      "text": "{\"id\":9,\"vendor\":\"Vendor 1\",\"url\":\"https://example.com/feed.xml\",\"keywords\":\"change\",\"owner\":\"Owner\",\"version\":\"\",\"command\":\"npm test\",\"lastScan\":null}"
+    },
+    {
+      "status": 201,
+      "text": "{\"id\":10,\"vendor\":\"Vendor 2\",\"url\":\"https://example.com/feed.xml\",\"keywords\":\"change\",\"owner\":\"Owner\",\"version\":\"\",\"command\":\"npm test\",\"lastScan\":null}"
+    },
+    {
+      "status": 201,
+      "text": "{\"id\":11,\"vendor\":\"Vendor 3\",\"url\":\"https://example.com/feed.xml\",\"keywords\":\"change\",\"owner\":\"Owner\",\"version\":\"\",\"command\":\"npm test\",\"lastScan\":null}"
+    },
+    {
+      "status": 409,
+      "text": "This workspace already has three watches. Edit an existing watch before adding another."
+    }
+  ],
+  "long": {
+    "status": 201,
+    "bodyLength": 40125
+  }
+}

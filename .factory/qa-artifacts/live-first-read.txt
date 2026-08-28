@@ -1,0 +1,93 @@
+{
+  "status": 200,
+  "url": "https://integration-changelog-watch.sociobot.in/",
+  "title": "Integration Changelog Watch — Track vendor changes",
+  "h1": [
+    "Turn vendor changes into owned actions"
+  ],
+  "firstViewport": [
+    "▰",
+    "Demo",
+    "How it works",
+    "Privacy",
+    "INTEGRATION CHANGELOG WATCH",
+    "Turn vendor changes into owned actions",
+    "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+    "Try it with sample data",
+    "See matched notices, owners, and checks.",
+    "Rules are written by your team.",
+    "Scans run only when you request them.",
+    "Your workspace is separated from other visitors.",
+    "Original paper-cut illustration.",
+    "Your owned queue",
+    "No actions need an owner",
+    "Scan watched feeds",
+    "Add a watch",
+    "Action cards"
+  ],
+  "buttons": [
+    "Try it with sample data",
+    "Scan watched feeds",
+    "Add a watch",
+    "Add your first watch",
+    "Export action cards as CSV"
+  ],
+  "links": [
+    "Skip to content",
+    "▰ Changelog Watch",
+    "Demo",
+    "How it works",
+    "Privacy",
+    "Privacy",
+    "Terms"
+  ],
+  "headers": {
+    "accept-ranges": "bytes",
+    "cache-control": "no-cache",
+    "content-length": "1458",
+    "content-security-policy": "default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+    "content-type": "text/html",
+    "date": "Fri, 28 Aug 2026 18:54:16 GMT",
+    "last-modified": "Fri, 28 Aug 2026 18:30:15 GMT",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff"
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/assets/index-CWYyw5pc.js"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/assets/index-CPi_kfO2.css"
+    },
+    {
+      "method": "POST",
+      "url": "https://integration-changelog-watch.sociobot.in/api/workspaces"
+    },
+    {
+      "method": "POST",
+      "url": "https://integration-changelog-watch.sociobot.in/api/workspaces"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/paper-cut-hero.webp"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/api/watches"
+    },
+    {
+      "method": "GET",
+      "url": "https://integration-changelog-watch.sociobot.in/api/actions"
+    }
+  ],
+  "errors": [],
+  "body": "Skip to content\n▰ Changelog Watch\nDemo\nHow it works\nPrivacy\n\nINTEGRATION CHANGELOG WATCH\n\nTurn vendor changes into owned actions\n\nFor engineers who maintain payment, auth, analytics, or messaging integrations.\n\nTry it with sample data\nSee matched notices, owners, and checks.\nRules are written by your team.\nScans run only when you request them.\nYour workspace is separated from other visitors.\nOriginal paper-cut illustration.\n\nYour owned queue\n\nNo actions need an owner\nScan watched feeds\nAdd a watch\n\nAction cards\nNo action cards yet\n\nAdd a feed, rule, owner, and check command. Matched release notes will appear here.\n\nAdd your first watch\nWatched feeds\n0/3\n\nNothing is watched yet.\n\nExport action cards as CSV\n\nHow it works\n\nGive each vendor change a next step\nWatch a public feed.\nPaste a changelog or RSS address you are allowed to read.\nMatch your words.\nUse rules like “webhook”, “deprecation”, or an API version.\nRun the right check.\nEach matching notice gets an owner and a check command.\nWhat this does not do\n\nIt does not read private portals, alter code, or detect undocumented changes.\n\nPrivate, loopback, and link-local addresses are blocked.\n\nIntegration Changelog Watch\n\nVendor notices become owned integration actions.\n\nPrivacy · Terms · Built by Param Factory · v2"
+}

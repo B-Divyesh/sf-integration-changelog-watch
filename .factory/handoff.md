@@ -1,61 +1,59 @@
-# Handoff — release-blocker repair
+# Handoff — independent verification 2
 
 ## Release decision
 
-**PASS — repaired and deployed.**
+**FAIL — do not release candidate `865e029755c1ffa9c8a28b281b72bc9b4f16f454`.**
 
-Source repair commits:
+Verified on 2026-08-28 UTC against `https://integration-changelog-watch.sociobot.in`. Live `/health` reports the exact candidate SHA, and local/live frontend hashes match.
 
-- `9dfe8d22abb09cc1b3797d4ef7750b0b720b0aeb` — isolated workspaces, safe feed scanning, schema/parser/CLI repair
-- `11e2887f7a60d2d6221456ad6cb1fc8cb889bef1` — 200% reflow repair and regression
-- `9d2befbc5611682832ecaa9c9417bc78d5360969` — preserve `no-store, private` on authenticated API responses
+No product code was modified. The full evidence and defect analysis are in `.factory/verification-2.md` and `.factory/qa-artifacts/`.
 
-## What changed
+## Release blockers
 
-- Replaced globally shared watches/actions with bearer-token workspaces. `POST /api/workspaces` creates a high-entropy token; only its SHA-256 hash is stored. Every watch, action, scan, and acknowledgement request requires that token and all SQLite queries are scoped by workspace ID.
-- Defined one API/UI action schema: numeric `id`/`watchId`, `url`, and `seenAt`. The UI now renders persisted server actions and acknowledges their numeric IDs. Keyboard acknowledgement restores focus to the updated card.
-- Rejected malformed, credentialed, redirecting, loopback, private, link-local, multicast, and DNS-resolved private feed destinations. Requests pin the already-validated resolved addresses and never follow redirects.
-- Scanner now emits every unseen RSS match, supports Atom title/summary/link forms and HTML changelog headings, keeps item permalinks, deduplicates notice keys, and reports per-feed errors instead of calling a failed scan complete.
-- Added `demo`, `--help`, and `scan --config <file>` CLI workflows. `examples/watches.json` is the repository-owned mapping; `demo` prints bundled Markdown action cards without a network request.
-- Removed the unavailable paid checkout and all related claims. Added workspace/privacy language and claim coverage that matches the available product.
-- Fixed clean typecheck, Rust formatting/Clippy, claim-server cold-start timeout (180 seconds), 44px demo controls, 200% reflow, action-focus continuity, real 404 handling, API no-store caching, immutable hashed assets, HSTS, and Permissions-Policy.
-- Added a 1200×630 derived social card, Twitter metadata, route canonical updates, and recorded the derivative provenance in the visual thesis.
+1. The live rate limiter is bypassable with a client-supplied `X-Forwarded-For`: one client sent 80 concurrent requests and received 80 × 200. Normal requests do receive 429, but `Retry-After: 1` contradicts the server's 19-second wait.
+2. Real feed failures disappear when the frontend hydrates, leaving no error or next step. Watches cannot be edited or deleted; after three, the UI tells the user to edit an existing watch even though no such control or endpoint exists.
+3. `scan --config examples/watches.json` exits 1 because the shipped Stripe RSS URL returns 404. The CLI also does not persist hashes/action-card state or acknowledgements required by the researched CLI workflow.
+4. `.factory/claims.json` commands pass, but the registry omits multiple public landing, privacy, README, and CLI claims. The attached claims contract makes this release-blocking.
 
-## Verification evidence
+Additional findings: 10,000-character persisted fields are accepted; every cold real page creates two workspaces; several link targets are below 44 × 44 px; the live 404 is unstyled and lacks the standard header/footer; supplied `DATABASE_URL` is logged as defaulted.
 
-Executed from a clean installed dependency set on 2026-08-28 UTC:
+## Verification summary
+
+Passing gates:
+
+- All four exact claim commands: 2/2 desktop/mobile each.
+- `npm test`: 3/3.
+- Typecheck and lint: pass.
+- Frontend production build: pass, `dist/` created.
+- Rust fmt, 5 backend tests, Clippy with warnings denied, and locked release build: pass.
+- Local and live Playwright: 20/20 each.
+- Packed crate install into a clean root; installed `--help` and canned `demo`: pass.
+- Real GitHub feed scan/render/acknowledge/reload: pass; 10 concurrent scans created no duplicates.
+- Restart persistence and workspace-token isolation: pass.
+- Axe serious/critical: zero at desktop, 390 px, and 195 px; keyboard, focus, reflow, and reduced motion pass.
+- Demo request log: same-origin only, no cookies, no third-party requests.
+- Lighthouse mobile: 100 Performance / 100 Accessibility / 100 Best Practices / 100 SEO; LCP 1.3 s, CLS 0.
+- JS 12.33 KB raw / 4.93 KB gzip; CSS 7.51 KB raw / 2.50 KB gzip; hero 58.97 KB.
+
+The exact Docker image build was not available because this verifier environment has no Docker-compatible builder. The locked frontend and release backend builds pass, and the Dockerfile contract test passes.
+
+## How to reproduce blockers
 
 ```sh
-npm ci --ignore-scripts                         # pass: 60 packages, 0 vulnerabilities
-npm test                                        # pass: 3/3
-npm run typecheck                               # pass
-npm run build                                   # pass: dist/; JS 12.33 kB raw / 4.91 kB gzip; CSS 7.51 kB raw / 2.49 kB gzip
-cargo fmt --all -- --check                      # pass
-cargo test --locked                             # pass: 5/5
-cargo clippy --all-targets --locked -- -D warnings  # pass
-cargo build --release --locked                  # pass
-cargo run --quiet -- --help                     # pass
-cargo run --quiet -- demo                       # pass: Markdown action cards
-npm run test:browser                            # pass: 20/20, Chromium desktop + 390px mobile
-PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:browser
-                                                  # pass: 20/20 against deployed vanity URL
+npm ci
+npm run build
+npm run test:browser
+
+# Dead shipped CLI example
+cargo build --release --locked
+./target/release/integration-changelog-watch scan --config examples/watches.json
+
+# Inspect the mandatory detailed evidence
+sed -n '1,360p' .factory/verification-2.md
 ```
 
-Browser coverage includes the first-read demo, CSV download, offline feedback, same-origin demo privacy, keyboard skip/Space acknowledgement/focus restoration, axe WCAG 2 A/AA serious/critical scan (zero), route titles/headings, real workspace schema rendering, API token boundary, loopback rejection, 390px layout, and 195px/200%-equivalent reflow without horizontal scrolling.
+For the scan recovery defect, add `https://example.com/definitely-missing-icw-feed.xml` in a fresh real workspace and scan. The API returns a feed error, but the visible status becomes empty. Add three watches, then try a fourth: the alert asks the user to edit an existing watch, while the interface exposes no edit/delete action.
 
-Every `.factory/claims.json` command was also run after build and passes in Chromium desktop/mobile. Each claim ID has one tagged browser test.
+## Next steps
 
-Runtime smoke on the final release confirms `GET /health` returns build `9d2befbc5611682832ecaa9c9417bc78d5360969`; `GET /api/watches` without a token returns `401` with `Cache-Control: no-store, private`; a missing route returns a nonempty `404`; hashed CSS returns `Cache-Control: public, max-age=31536000, immutable`; CSP, nosniff, Referrer-Policy, HSTS, and Permissions-Policy are present.
-
-## Deployment
-
-- ACR build `chj4` succeeded.
-- Image: `sociobotregistry.azurecr.io/sf-integration-changelog-watch:9d2befbc5611`
-- Digest: `sha256:481683a9c6644c72552c0b265438f272cc14bd5596e05d0bf8c1f78fef19b2fc`
-- Container App: `sf-integration-changelog-watch`, resource group `sociobot`, revision `sf-integration-changelog-watch--0000003`, healthy, 100% traffic.
-- Live URL: `https://integration-changelog-watch.sociobot.in`
-
-## Known gaps / next steps
-
-- Workspaces are private bearer-token workspaces, not identity accounts. Clearing browser storage loses access to that workspace; account recovery/team sharing is intentionally not claimed or shipped.
-- Feed retrieval deliberately refuses redirects. Owners should paste the final public HTTPS feed URL.
+Fix the trusted-IP limiter and retry timing first. Then preserve scan errors, add watch editing/removal, repair and complete the repository CLI, and bring all public claims into the claim registry. Re-run this full verification from a clean clone before release.

@@ -1,0 +1,37 @@
+{
+  "requests": 120,
+  "summary": {
+    "200": 77,
+    "429": 43
+  },
+  "first429": {
+    "i": 42,
+    "status": 429,
+    "retry": "1",
+    "rateAfter": "11",
+    "body": "Too Many Requests! Wait for 11s"
+  },
+  "sampleNon200": [
+    {
+      "i": 42,
+      "status": 429,
+      "retry": "1",
+      "rateAfter": "11",
+      "body": "Too Many Requests! Wait for 11s"
+    },
+    {
+      "i": 49,
+      "status": 429,
+      "retry": "1",
+      "rateAfter": "19",
+      "body": "Too Many Requests! Wait for 19s"
+    },
+    {
+      "i": 53,
+      "status": 429,
+      "retry": "1",
+      "rateAfter": "11",
+      "body": "Too Many Requests! Wait for 11s"
+    }
+  ]
+}

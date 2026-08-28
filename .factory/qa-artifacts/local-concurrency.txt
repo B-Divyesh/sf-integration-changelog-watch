@@ -1,0 +1,49 @@
+{
+  "workspaceStatus": 201,
+  "watchId": 13,
+  "scans": [
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 10
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    },
+    {
+      "status": 200,
+      "newActions": 0
+    }
+  ],
+  "actionCount": 10,
+  "distinctCount": 10,
+  "duplicateCount": 0
+}

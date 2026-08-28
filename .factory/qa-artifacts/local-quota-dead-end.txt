@@ -1,0 +1,19 @@
+{
+  "watchCount": 3,
+  "interactiveNames": [
+    "Skip to content",
+    "▰ Changelog Watch",
+    "Demo",
+    "How it works",
+    "Privacy",
+    "Try it with sample data",
+    "Scan watched feeds",
+    "Add a watch",
+    "Add your first watch",
+    "Export action cards as CSV",
+    "Privacy",
+    "Terms"
+  ],
+  "editControls": 0,
+  "alert": "This watch was not saved. This workspace already has three watches. Edit an existing watch before adding another."
+}

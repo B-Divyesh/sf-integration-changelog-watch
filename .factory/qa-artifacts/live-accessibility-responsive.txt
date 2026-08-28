@@ -1,0 +1,269 @@
+[
+  {
+    "viewport": {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    "dimensions": {
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 2442
+    },
+    "targets": [
+      {
+        "name": "Skip to content",
+        "tag": "A",
+        "w": 121.515625,
+        "h": 24
+      },
+      {
+        "name": "▰ Changelog Watch",
+        "tag": "A",
+        "w": 171.328125,
+        "h": 24
+      },
+      {
+        "name": "Terms",
+        "tag": "A",
+        "w": 40.03125,
+        "h": 44
+      }
+    ],
+    "semantics": {
+      "lang": "en",
+      "title": "Demo — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "missingAlt": 0,
+      "headings": [
+        {
+          "level": 1,
+          "text": "Turn vendor changes into owned actions"
+        },
+        {
+          "level": 2,
+          "text": "1 action needs an owner"
+        },
+        {
+          "level": 3,
+          "text": "Action cards"
+        },
+        {
+          "level": 3,
+          "text": "Stripe retires legacy webhook event format"
+        },
+        {
+          "level": 3,
+          "text": "Auth0 changes refresh token rotation defaults"
+        },
+        {
+          "level": 3,
+          "text": "Watched feeds"
+        },
+        {
+          "level": 2,
+          "text": "Give each vendor change a next step"
+        },
+        {
+          "level": 2,
+          "text": "What this does not do"
+        }
+      ]
+    },
+    "skipFocused": true,
+    "skipStyle": {
+      "outline": "rgb(40, 79, 122) dashed 3px",
+      "position": "absolute",
+      "left": "12px",
+      "top": "12px"
+    },
+    "mainFocused": true,
+    "reducedMotion": {
+      "transition": "0s",
+      "animation": "0s",
+      "scroll": "auto"
+    },
+    "axeSeriousCritical": [],
+    "consoleErrors": []
+  },
+  {
+    "viewport": {
+      "name": "mobile390",
+      "width": 390,
+      "height": 844
+    },
+    "dimensions": {
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "clientHeight": 844,
+      "scrollHeight": 3274
+    },
+    "targets": [
+      {
+        "name": "Skip to content",
+        "tag": "A",
+        "w": 121.515625,
+        "h": 24
+      },
+      {
+        "name": "Demo",
+        "tag": "A",
+        "w": 42.765625,
+        "h": 44
+      },
+      {
+        "name": "Terms",
+        "tag": "A",
+        "w": 40.03125,
+        "h": 44
+      }
+    ],
+    "semantics": {
+      "lang": "en",
+      "title": "Demo — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "missingAlt": 0,
+      "headings": [
+        {
+          "level": 1,
+          "text": "Turn vendor changes into owned actions"
+        },
+        {
+          "level": 2,
+          "text": "1 action needs an owner"
+        },
+        {
+          "level": 3,
+          "text": "Action cards"
+        },
+        {
+          "level": 3,
+          "text": "Stripe retires legacy webhook event format"
+        },
+        {
+          "level": 3,
+          "text": "Auth0 changes refresh token rotation defaults"
+        },
+        {
+          "level": 3,
+          "text": "Watched feeds"
+        },
+        {
+          "level": 2,
+          "text": "Give each vendor change a next step"
+        },
+        {
+          "level": 2,
+          "text": "What this does not do"
+        }
+      ]
+    },
+    "skipFocused": true,
+    "skipStyle": {
+      "outline": "rgb(40, 79, 122) dashed 3px",
+      "position": "absolute",
+      "left": "12px",
+      "top": "12px"
+    },
+    "mainFocused": true,
+    "reducedMotion": {
+      "transition": "0s",
+      "animation": "0s",
+      "scroll": "auto"
+    },
+    "axeSeriousCritical": [],
+    "consoleErrors": []
+  },
+  {
+    "viewport": {
+      "name": "reflow195",
+      "width": 195,
+      "height": 844
+    },
+    "dimensions": {
+      "clientWidth": 195,
+      "scrollWidth": 195,
+      "clientHeight": 844,
+      "scrollHeight": 4134
+    },
+    "targets": [
+      {
+        "name": "Skip to content",
+        "tag": "A",
+        "w": 121.515625,
+        "h": 24
+      },
+      {
+        "name": "▰ Changelog Watch",
+        "tag": "A",
+        "w": 171.328125,
+        "h": 22
+      },
+      {
+        "name": "Terms",
+        "tag": "A",
+        "w": 40.03125,
+        "h": 44
+      }
+    ],
+    "semantics": {
+      "lang": "en",
+      "title": "Demo — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "missingAlt": 0,
+      "headings": [
+        {
+          "level": 1,
+          "text": "Turn vendor changes into owned actions"
+        },
+        {
+          "level": 2,
+          "text": "1 action needs an owner"
+        },
+        {
+          "level": 3,
+          "text": "Action cards"
+        },
+        {
+          "level": 3,
+          "text": "Stripe retires legacy webhook event format"
+        },
+        {
+          "level": 3,
+          "text": "Auth0 changes refresh token rotation defaults"
+        },
+        {
+          "level": 3,
+          "text": "Watched feeds"
+        },
+        {
+          "level": 2,
+          "text": "Give each vendor change a next step"
+        },
+        {
+          "level": 2,
+          "text": "What this does not do"
+        }
+      ]
+    },
+    "skipFocused": true,
+    "skipStyle": {
+      "outline": "rgb(40, 79, 122) dashed 3px",
+      "position": "absolute",
+      "left": "12px",
+      "top": "12px"
+    },
+    "mainFocused": true,
+    "reducedMotion": {
+      "transition": "0s",
+      "animation": "0s",
+      "scroll": "auto"
+    },
+    "axeSeriousCritical": [],
+    "consoleErrors": []
+  }
+]
