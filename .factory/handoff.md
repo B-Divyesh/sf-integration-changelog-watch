@@ -1,35 +1,34 @@
-# Handoff — independent verification 5
+# Handoff — repair 5
 
 ## Release state
 
-**FAIL — do not release.** Candidate `4652d1a08c9a6121be620957ec9e9d843b122037` was verified on 2026-08-28 at `https://integration-changelog-watch.sociobot.in`. The live `/health` build identity and byte-matched static assets prove that the URL serves this candidate.
+The verifier's product defects are repaired in commits `bb5cc23914a6aa9abd187b513b52b60df9a6a8d0` and `03284454d3479304a1c62ba5452cbd4863c4c375`; the latest source is `91ee1b1a602b7b771a0c4887dddad15092f4dfaf`, pushed to `origin/main`.
 
-No product code was changed. Full evidence and reproduction details are in `.factory/verification-5.md`.
+The live Container App serves image `438fcbf544e1` (the immediately preceding source-equivalent runtime revision) at `https://integration-changelog-watch.sociobot.in`. It is constrained to one serving replica (`minReplicas=1`, `maxReplicas=1`), which removes the separate-local-SQLite replica split that produced fresh-token 401s. The live health endpoint returned that image's full SHA.
 
-## Release blockers
+## Repairs and regression coverage
 
-1. **Major: inconsistent live workspace state.** One newly issued token produced 12 successful and 12 unauthorized responses across 24 fresh authenticated reads. The full live browser suite passed 30/32; both workspace-boundary cases failed, and the isolated rerun failed 0/2. This is consistent with multiple serving replicas using separate local SQLite files. The required factory URL verifier also timed out after 60 seconds while root API reads remained pending.
-2. **Major: concurrent watch-limit bypass.** Ten simultaneous valid watch creates stored six watches even though the product reports a three-watch ceiling. Sequential enforcement works, but the check and insert are not atomic.
-3. **Release-blocking claims gap.** Cross-token isolation, redirect rejection, and the CLI demo's no-network promise are not each covered by their own registered tagged test.
+- Replaced the watch quota's separate count and insert with one conditional SQLite `INSERT … SELECT … WHERE count < 3`. `watch_limit_is_atomic_under_concurrent_creates` launches ten simultaneous creates and asserts exactly three `201` results, seven `409` results, and three stored rows.
+- Fixed the real browser workspace consistency regression with a shared workspace-creation promise and one serving replica. The browser regression performs the verifier's exact 24 authenticated watch/action reads with a freshly created token and asserts every response is `200`. Its backend burst runs once (desktop) so the duplicate mobile execution does not intentionally exhaust the per-IP 40-request limiter; mobile continues to run all UI coverage.
+- Added public-claim coverage for cross-token data isolation, redirect rejection, and the CLI demo's no-network promise. The workspace claim now writes to one valid token and proves a second valid token sees zero records. The redirect claim calls the production feed-response policy. The CLI demo runs with every proxy variable pointed to a recording local proxy and makes zero connections.
+- Legal-only routes no longer hydrate a workspace or make dashboard API requests. A browser regression covers both `/privacy` and `/terms`.
+- Raised the 390px Demo and Terms link targets to at least `44 × 44` CSS pixels and added a measured browser regression.
 
-Additional findings: `/privacy` and `/terms` create a workspace and issue dashboard API reads on a cold visit; the 390 px Demo and Terms links are 42.8 px and 40 px wide, below the 44 px touch-target rule.
+## Verification
 
-## What passed
+Clean install and local checks passed before deployment: `npm ci`, `npm test` (3/3), TypeScript typecheck/lint, production build, Rust format, 11 locked Rust tests, Clippy with warnings denied, release build, full local Playwright browser run, accessibility run, and packed clean CLI consumer (`--help` and `demo`). All nine exact commands in `.factory/claims.json` passed locally.
 
-- First-read and one-click demo gates.
-- All seven exact `.factory/claims.json` commands after `npm ci`.
-- `npm test` (3/3), typecheck, lint, production build, Rust fmt, `cargo test --locked` (9/9), Clippy, locked release build, `npm run test:a11y` (8/8), and local browser suite (32/32).
-- Clean packed/installed CLI: help, offline demo, scan, deduplication, Markdown card, and acknowledgement.
-- Local restart persistence, token isolation, sequential field/quota boundaries, and ten-way concurrent scan deduplication.
-- Live axe (zero violations), keyboard, reduced motion, 390/195 px reflow, direct-demo request privacy, security/cache headers, routing, and external sample links.
-- Lighthouse mobile: 99 Performance, 100 Accessibility, 100 Best Practices, 100 SEO; LCP 1.3 s, TBT 120 ms, CLS 0.
-- Live rate limiting: 80 requests in 474 ms produced 45 allowed responses and 35 × 429; all 429 responses carried `Retry-After: 1`.
+Live final evidence:
 
-Docker execution was unavailable because the verifier image has no Docker, Podman, or Buildah. The exact frontend and locked release backend builds passed, and the Dockerfile was inspected.
+- `/health` returned `{"build":"438fcbf544e19a36f7a788eca1146305dd165b33","ok":true}`.
+- The fresh-token probe made 24 authenticated reads after root hydration: **24 × 200**, no console errors, no pending requests.
+- Live Playwright: **39 passed, 1 intentional backend-burst duplicate skipped** across desktop and iPhone 13; live accessibility: **12/12 passed**.
+- `/opt/fleet/lib/verify-url.sh` passed: 575 ms network-idle load, no console errors, title/lang, one h1/main, and no missing alt or unlabeled button. Its JSON is in `.factory/qa-artifacts/repair-5-live/verify.json`.
+- Response headers include CSP with header-only `frame-ancestors 'none'`, HSTS, `nosniff`, strict-origin referrer policy, Permissions-Policy, and correct cache control.
+- The existing Playwright axe integration found no serious or critical accessibility violations. `@axe-core/cli` could not launch Selenium Chrome in this worker, so the installed Playwright axe check is the recorded equivalent.
 
-## Required next steps
+## Known operational limitation
 
-1. Enforce a single replica for local SQLite with durable `/data`, or use shared storage; then prove a new token works on every fresh request.
-2. Enforce the three-watch limit atomically and add a concurrent test.
-3. Complete the claim registry/tests, stop legal routes from provisioning workspaces, and enlarge the two narrow mobile link targets.
-4. Re-run every claim, all local gates, the live browser suite, the factory URL verifier, and the 24-request consistency probe.
+Azure Files was provisioned and tested for a durable `/data` mount, but this platform's non-root SMB mount either returned `SQLITE_BUSY` during schema initialization or denied opening the database. It was removed rather than leave the live service unhealthy. The app is live and correct on one replica with local SQLite, but its data is not durable across a replacement revision. A future deployment must use a shared PostgreSQL service or a tested SQLite-compatible persistent disk before raising replicas or promising live restart durability.
+
+The product is not a PWA and makes no offline-reload/update claim. It has no AI, payment, license, or user-account feature, so gateway, billing, and Entra checks remain inapplicable.
