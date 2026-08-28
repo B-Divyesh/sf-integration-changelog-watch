@@ -111,8 +111,11 @@ nav {
 }
 nav a {
   min-height: 44px;
+  min-width: 44px;
+  padding-inline: 4px;
   display: grid;
   align-items: center;
+  justify-content: center;
 }
 .hero {
   min-height: 480px;
@@ -489,6 +492,11 @@ footer a,
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+}
+footer a {
+  min-width: 44px;
+  padding-inline: 4px;
+  justify-content: center;
 }
 @media (max-width: 720px) {
   header,

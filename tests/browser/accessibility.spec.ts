@@ -22,6 +22,29 @@ test('privacy deep link has its own heading and title', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy for Integration Changelog Watch')
 })
 
+test('legal pages do not create a workspace or make dashboard API requests', async ({ page }) => {
+  for (const path of ['/privacy', '/terms']) {
+    const apiRequests: string[] = []
+    page.on('request', request => {
+      if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url())
+    })
+    await page.goto(path)
+    expect(apiRequests).toEqual([])
+    expect(await page.evaluate(() => localStorage.getItem('icw:workspace-token'))).toBeNull()
+  }
+})
+
+test('mobile navigation and footer links meet the 44px touch target minimum', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/privacy')
+  for (const link of [page.getByRole('link', { name: 'Demo' }), page.getByRole('link', { name: 'Terms' })]) {
+    const box = await link.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  }
+})
+
 test('demo reflows without horizontal scrolling at 200% equivalent width', async ({ page }) => {
   await page.setViewportSize({ width: 195, height: 844 })
   await page.goto('/demo')

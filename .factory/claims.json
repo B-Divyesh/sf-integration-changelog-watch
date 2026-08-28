@@ -22,10 +22,17 @@
   },
   {
     "id": "workspace-boundary",
-    "claim": "Workspace endpoints require a browser-held token, and private feed addresses are blocked.",
+    "claim": "Workspace records are isolated by browser-held tokens, and private feed addresses are blocked.",
     "where": "landing fact and privacy/terms pages",
     "test": "npm run build && npm run test:browser -- --grep @claim:workspace-boundary",
-    "sandbox": "fresh browser context creates a workspace, then attempts unauthenticated and loopback API access"
+    "sandbox": "fresh browser context creates two workspace tokens, writes a safe fixture watch to one, proves the other cannot read it, then attempts anonymous and loopback access"
+  },
+  {
+    "id": "redirecting-feeds",
+    "claim": "Redirecting source feeds are rejected instead of followed.",
+    "where": "terms page",
+    "test": "cargo test --locked claim_redirecting_feeds_are_rejected",
+    "sandbox": "a redirect HTTP response is passed through the same feed-response policy used by scans and returns the readable redirect error"
   },
   {
     "id": "requested-scans",
@@ -40,6 +47,13 @@
     "where": "README CLI section",
     "test": "npm run build && npm run test:browser -- --grep @claim:cli-repository-workflow",
     "sandbox": "temporary repository mapping with a local shipped-format feed; scan twice, inspect state and card, then acknowledge it"
+  },
+  {
+    "id": "cli-demo-local",
+    "claim": "The CLI demo command makes no network request.",
+    "where": "CLI help and README CLI section",
+    "test": "npm run build && npm run test:browser -- --grep @claim:cli-demo-local",
+    "sandbox": "run the CLI demo with every HTTP proxy pointed at a local request-recording proxy; assert the shipped cards print and the proxy receives no connection"
   },
   {
     "id": "database-persistence",

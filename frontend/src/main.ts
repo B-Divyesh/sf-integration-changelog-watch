@@ -105,7 +105,9 @@ function route(path: string, moveFocus = false) {
   demo = path === '/demo' || new URLSearchParams(location.search).get('demo') === '1'
   load()
   render()
-  if (!demo) void hydrateReal()
+  // Legal pages are informational routes. They must not create a workspace or
+  // make dashboard API requests merely because someone reads their terms.
+  if (!demo && active === 'home') void hydrateReal()
   if (moveFocus) document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
 }
 

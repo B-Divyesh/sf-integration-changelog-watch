@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { createServer } from 'node:net'
 
 const execFileAsync = promisify(execFile)
 
@@ -25,19 +26,44 @@ test('real workspace renders the server action schema and acknowledges its numer
   await expect.poll(() => acknowledged).toBe(true)
 })
 
-test('@claim:workspace-boundary workspace endpoints reject callers without a workspace token and block loopback feeds', async ({ page }) => {
-  await page.goto('/')
+test('@claim:workspace-boundary workspace tokens isolate records, reject anonymous callers, and block private feeds', async ({ page }) => {
+  await page.goto('/privacy')
   const result = await page.evaluate(async () => {
     const unauthenticated = await fetch('/api/watches')
-    const workspace = await fetch('/api/workspaces', { method: 'POST' }).then(response => response.json()) as { token: string }
+    const first = await fetch('/api/workspaces', { method: 'POST' }).then(response => response.json()) as { token: string }
+    const second = await fetch('/api/workspaces', { method: 'POST' }).then(response => response.json()) as { token: string }
+    const firstWatch = await fetch('/api/watches', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${first.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ vendor: 'Isolated', url: 'https://1.1.1.1/feed', keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }),
+    })
+    const secondWatches = await fetch('/api/watches', { headers: { authorization: `Bearer ${second.token}` } })
     const privateFeed = await fetch('/api/watches', {
       method: 'POST',
-      headers: { authorization: `Bearer ${workspace.token}`, 'content-type': 'application/json' },
+      headers: { authorization: `Bearer ${first.token}`, 'content-type': 'application/json' },
       body: JSON.stringify({ vendor: 'Blocked', url: 'http://127.0.0.1/internal', keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }),
     })
-    return { unauthenticated: unauthenticated.status, privateFeed: privateFeed.status }
+    return {
+      unauthenticated: unauthenticated.status,
+      firstWatch: firstWatch.status,
+      privateFeed: privateFeed.status,
+      secondWatches: secondWatches.status,
+      secondWorkspaceWatchCount: (await secondWatches.json() as unknown[]).length,
+    }
   })
-  expect(result).toEqual({ unauthenticated: 401, privateFeed: 400 })
+  expect(result).toEqual({ unauthenticated: 401, firstWatch: 201, privateFeed: 400, secondWatches: 200, secondWorkspaceWatchCount: 0 })
+})
+
+test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  const statuses = await page.evaluate(async () => {
+    const token = localStorage.getItem('icw:workspace-token')!
+    return Promise.all(Array.from({ length: 24 }, (_, index) => fetch(index % 2 ? '/api/watches' : '/api/actions', {
+      headers: { authorization: `Bearer ${token}` },
+    }).then(response => response.status)))
+  })
+  expect(statuses).toEqual(Array(24).fill(200))
 })
 
 test('@claim:requested-scans runs a real workspace scan only after the owner requests it', async ({ page }) => {
@@ -107,5 +133,31 @@ test('@claim:cli-repository-workflow stores hashes, action cards, and acknowledg
     expect(acknowledged.actions[0].acknowledged).toBe(true)
   } finally {
     await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('@claim:cli-demo-local CLI demo prints shipped cards without using a configured network proxy', async () => {
+  let proxyConnections = 0
+  const proxy = createServer(socket => {
+    proxyConnections += 1
+    socket.destroy()
+  })
+  await new Promise<void>((resolve, reject) => {
+    proxy.once('error', reject)
+    proxy.listen(0, '127.0.0.1', () => resolve())
+  })
+  const address = proxy.address()
+  if (!address || typeof address === 'string') throw new Error('Test proxy did not bind a TCP port.')
+  try {
+    const proxyUrl = `http://127.0.0.1:${address.port}`
+    const { stdout } = await execFileAsync('cargo', ['run', '--quiet', '--', 'demo'], {
+      cwd: process.cwd(),
+      env: { ...process.env, HTTP_PROXY: proxyUrl, HTTPS_PROXY: proxyUrl, ALL_PROXY: proxyUrl, NO_PROXY: '' },
+    })
+    expect(stdout).toContain('Stripe retires legacy webhook event format')
+    expect(stdout).toContain('Auth0 changes refresh token rotation defaults')
+    expect(proxyConnections).toBe(0)
+  } finally {
+    await new Promise<void>(resolve => proxy.close(() => resolve()))
   }
 })

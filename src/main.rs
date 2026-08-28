@@ -51,7 +51,7 @@ struct Watch {
     last_scanned: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct NewWatch {
     vendor: String,
     url: String,
@@ -340,21 +340,41 @@ async fn add_watch(
 ) -> ApiResult<(StatusCode, Json<Watch>)> {
     let workspace = workspace_id(&headers, &app).await?;
     validate_watch(&new).await?;
-    let count: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM workspace_watches WHERE workspace_id=?")
-            .bind(workspace)
-            .fetch_one(&app.db)
-            .await
-            .map_err(internal)?;
-    if count >= 3 {
+    let watch = insert_watch_under_limit(&app.db, workspace, &new).await?;
+    Ok((StatusCode::CREATED, Json(watch)))
+}
+
+/// The quota condition lives in the INSERT statement, rather than in a prior
+/// read. SQLite serializes this statement with competing writers, so two
+/// simultaneous creates cannot both observe a spare fourth slot.
+async fn insert_watch_under_limit(
+    db: &SqlitePool,
+    workspace: i64,
+    new: &NewWatch,
+) -> ApiResult<Watch> {
+    let result = sqlx::query(
+        "INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command)
+         SELECT ?,?,?,?,?,?,?
+         WHERE (SELECT count(*) FROM workspace_watches WHERE workspace_id=?) < 3",
+    )
+    .bind(workspace)
+    .bind(&new.vendor)
+    .bind(&new.url)
+    .bind(&new.keywords)
+    .bind(&new.owner)
+    .bind(&new.version)
+    .bind(&new.command)
+    .bind(workspace)
+    .execute(db)
+    .await
+    .map_err(internal)?;
+    if result.rows_affected() != 1 {
         return Err(ApiError(StatusCode::CONFLICT, "This workspace already has three watches. Edit an existing watch before adding another.".to_owned()));
     }
-    let id = sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command) VALUES(?,?,?,?,?,?,?)")
-        .bind(workspace).bind(&new.vendor).bind(&new.url).bind(&new.keywords).bind(&new.owner).bind(&new.version).bind(&new.command)
-        .execute(&app.db).await.map_err(internal)?.last_insert_rowid();
+    let id = result.last_insert_rowid();
     let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
-        .bind(id).bind(workspace).fetch_one(&app.db).await.map_err(internal)?;
-    Ok((StatusCode::CREATED, Json(watch)))
+        .bind(id).bind(workspace).fetch_one(db).await.map_err(internal)?;
+    Ok(watch)
 }
 
 async fn update_watch(
@@ -700,15 +720,21 @@ async fn fetch_public(value: &str) -> Result<String, String> {
         .send()
         .await
         .map_err(|_| "Could not reach this public feed.".to_owned())?;
-    if response.status().is_redirection() {
-        return Err("This feed redirects. Use its final public HTTPS address instead.".to_owned());
-    }
+    ensure_feed_response_is_safe(response.status())?;
     response
-        .error_for_status()
-        .map_err(|_| "The feed returned an error response.".to_owned())?
         .text()
         .await
         .map_err(|_| "Could not read this feed response.".to_owned())
+}
+
+fn ensure_feed_response_is_safe(status: StatusCode) -> Result<(), String> {
+    if status.is_redirection() {
+        return Err("This feed redirects. Use its final public HTTPS address instead.".to_owned());
+    }
+    if !status.is_success() {
+        return Err("The feed returned an error response.".to_owned());
+    }
+    Ok(())
 }
 
 async fn resolve_public_url(value: &str) -> Result<(Url, Vec<SocketAddr>), String> {
@@ -1133,6 +1159,68 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn watch_limit_is_atomic_under_concurrent_creates() {
+        let root = std::env::temp_dir().join(format!("icw-quota-test-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let database = root.join("changelog-watch.db");
+        let url = format!("sqlite:{}?mode=rwc", database.display());
+        let db = SqlitePoolOptions::new()
+            .max_connections(10)
+            .connect(&url)
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash("concurrent-workspace-token"))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let watch = NewWatch {
+            vendor: "Concurrent vendor".to_owned(),
+            url: "https://1.1.1.1/feed".to_owned(),
+            keywords: "webhook".to_owned(),
+            owner: "Maya".to_owned(),
+            version: "".to_owned(),
+            command: "npm test".to_owned(),
+        };
+        let mut creates = tokio::task::JoinSet::new();
+        for attempt in 0..10 {
+            let db = db.clone();
+            let mut watch = watch.clone();
+            watch.vendor = format!("Concurrent vendor {attempt}");
+            creates.spawn(async move {
+                match insert_watch_under_limit(&db, workspace, &watch).await {
+                    Ok(_) => StatusCode::CREATED,
+                    Err(ApiError(status, _)) => status,
+                }
+            });
+        }
+        let mut created = 0;
+        let mut limited = 0;
+        while let Some(result) = creates.join_next().await {
+            match result.unwrap() {
+                StatusCode::CREATED => created += 1,
+                StatusCode::CONFLICT => limited += 1,
+                status => panic!("unexpected concurrent create response: {status}"),
+            }
+        }
+        let stored: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM workspace_watches WHERE workspace_id=?")
+                .bind(workspace)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!((created, limited, stored), (3, 7, 3));
+        db.close().await;
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
     async fn ingress_client_ip_shares_one_bucket_across_connections_and_ignores_later_hops() {
         let db = SqlitePoolOptions::new()
             .max_connections(1)
@@ -1190,6 +1278,19 @@ mod tests {
             "Unix V4 Workshop at Low Resource Computing"
         );
         assert_eq!(notices[0].excerpt, "A webhook migration closes Friday.");
+    }
+
+    #[test]
+    fn claim_redirecting_feeds_are_rejected() {
+        assert_eq!(
+            ensure_feed_response_is_safe(StatusCode::TEMPORARY_REDIRECT),
+            Err("This feed redirects. Use its final public HTTPS address instead.".to_owned())
+        );
+        assert_eq!(
+            ensure_feed_response_is_safe(StatusCode::BAD_GATEWAY),
+            Err("The feed returned an error response.".to_owned())
+        );
+        assert_eq!(ensure_feed_response_is_safe(StatusCode::OK), Ok(()));
     }
 
     #[tokio::test]
