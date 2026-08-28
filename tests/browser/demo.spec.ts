@@ -44,7 +44,8 @@ test('demo standard flow stays same-origin and does not write real workspace dat
   await page.goto('/demo')
   await page.getByRole('button', { name: 'Acknowledge action' }).click()
   await expect(page.getByText('No actions need an owner')).toBeVisible()
-  expect(requests.every(url => new URL(url).origin === 'http://127.0.0.1:8080')).toBe(true)
+  const origin = new URL(page.url()).origin
+  expect(requests.every(url => new URL(url).origin === origin)).toBe(true)
   expect(await page.evaluate(() => localStorage.getItem('icw:workspace'))).toBeNull()
   expect(await page.evaluate(() => localStorage.getItem('demo:integration-changelog-watch'))).not.toBeNull()
 })
