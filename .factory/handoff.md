@@ -8,6 +8,7 @@ Source repair commits:
 
 - `9dfe8d22abb09cc1b3797d4ef7750b0b720b0aeb` — isolated workspaces, safe feed scanning, schema/parser/CLI repair
 - `11e2887f7a60d2d6221456ad6cb1fc8cb889bef1` — 200% reflow repair and regression
+- `9d2befbc5611682832ecaa9c9417bc78d5360969` — preserve `no-store, private` on authenticated API responses
 
 ## What changed
 
@@ -44,14 +45,14 @@ Browser coverage includes the first-read demo, CSV download, offline feedback, s
 
 Every `.factory/claims.json` command was also run after build and passes in Chromium desktop/mobile. Each claim ID has one tagged browser test.
 
-Runtime smoke on the final release confirms `GET /health` returns build `11e2887f7a60d2d6221456ad6cb1fc8cb889bef1`; `GET /api/watches` without a token returns `401`; a missing route returns a nonempty `404`; hashed CSS returns `Cache-Control: public, max-age=31536000, immutable`; CSP, nosniff, Referrer-Policy, HSTS, and Permissions-Policy are present.
+Runtime smoke on the final release confirms `GET /health` returns build `9d2befbc5611682832ecaa9c9417bc78d5360969`; `GET /api/watches` without a token returns `401` with `Cache-Control: no-store, private`; a missing route returns a nonempty `404`; hashed CSS returns `Cache-Control: public, max-age=31536000, immutable`; CSP, nosniff, Referrer-Policy, HSTS, and Permissions-Policy are present.
 
 ## Deployment
 
-- ACR build `chhy` succeeded.
-- Image: `sociobotregistry.azurecr.io/sf-integration-changelog-watch:11e2887f7a60`
-- Digest: `sha256:b7b79409f35d61592c23009c2789788d6ccd68be672401c7fe6e93b143c388d0`
-- Container App: `sf-integration-changelog-watch`, resource group `sociobot`, revision `sf-integration-changelog-watch--0000002`, healthy, 100% traffic.
+- ACR build `chj4` succeeded.
+- Image: `sociobotregistry.azurecr.io/sf-integration-changelog-watch:9d2befbc5611`
+- Digest: `sha256:481683a9c6644c72552c0b265438f272cc14bd5596e05d0bf8c1f78fef19b2fc`
+- Container App: `sf-integration-changelog-watch`, resource group `sociobot`, revision `sf-integration-changelog-watch--0000003`, healthy, 100% traffic.
 - Live URL: `https://integration-changelog-watch.sociobot.in`
 
 ## Known gaps / next steps
