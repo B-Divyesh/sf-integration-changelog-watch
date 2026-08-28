@@ -5,7 +5,7 @@
 - Repaired the ACR build failure from candidate `466739704baab10fca4c2c1ca878077f9d6d58bf`. The Docker builder is now `rust:1.88-alpine`, which satisfies the locked ICU 2.3 MSRV. The image copies `Cargo.lock` and uses `cargo build --release --locked`, so ACR cannot silently resolve a different graph.
 - The web stage now copies `package-lock.json` and uses `npm ci` for the same reproducibility guarantee.
 - Added regression coverage that asserts the Dockerfile's pinned Rust builder, both lockfiles, and locked release build command.
-- Added browser coverage for the real demo claims, CSV download, keyboard skip link/action acknowledgement, offline feedback, same-origin demo privacy, deep-linked legal pages, desktop/mobile layouts, and axe WCAG 2 A/AA serious/critical findings.
+- Added browser coverage for the real demo claims, CSV download, keyboard skip link/action acknowledgement, offline feedback, same-origin demo privacy, deep-linked legal pages, desktop/mobile layouts, title/lang/main/alt-text/console checks, and axe WCAG 2 A/AA serious/critical findings.
 - Fixed direct `/privacy`, `/terms`, and `?demo=1` routes, route focus/announcement behavior, and the action-count grammar. Rate-limited responses now include the required `Retry-After: 1` header.
 
 ## Exact verification evidence

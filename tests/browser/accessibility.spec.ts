@@ -2,9 +2,18 @@ import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 test('demo has no serious accessibility violations', async ({ page }) => {
+  const consoleErrors: string[] = []
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
   await page.goto('/demo')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page).toHaveTitle('Demo — Integration Changelog Watch')
+  await expect(page.locator('main')).toHaveCount(1)
+  await expect(page.locator('img:not([alt])')).toHaveCount(0)
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([])
+  expect(consoleErrors).toEqual([])
 })
 
 test('privacy deep link has its own heading and title', async ({ page }) => {
