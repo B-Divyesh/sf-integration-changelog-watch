@@ -319,9 +319,16 @@ code {
 }
 .watches article {
   display: grid;
+  min-width: 0;
   padding: 13px 0;
   border-bottom: 1px solid var(--line);
   gap: 2px;
+}
+.watches strong,
+.watches span,
+.watches small {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .watches small {
   color: var(--muted);
@@ -569,6 +576,16 @@ footer a,
   .empty {
     padding: 12px;
     clip-path: none;
+    box-shadow: none;
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .dash-grid > section,
+  .action-list {
+    min-width: 0;
+    max-width: 100%;
   }
   #license {
     min-width: 0;

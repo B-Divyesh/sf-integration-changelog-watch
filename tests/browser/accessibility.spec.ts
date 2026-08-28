@@ -21,3 +21,10 @@ test('privacy deep link has its own heading and title', async ({ page }) => {
   await expect(page).toHaveTitle('Privacy — Integration Changelog Watch')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy for Integration Changelog Watch')
 })
+
+test('demo reflows without horizontal scrolling at 200% equivalent width', async ({ page }) => {
+  await page.setViewportSize({ width: 195, height: 844 })
+  await page.goto('/demo')
+  const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }))
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport)
+})
