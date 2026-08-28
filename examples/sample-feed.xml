@@ -2,8 +2,8 @@
 <rss version="2.0"><channel>
   <title>Sample Payments changelog</title>
   <item>
-    <title>Webhook delivery format changes</title>
-    <description>Webhook signatures now include a version marker. Update fixtures before deployment.</description>
+    <title><![CDATA[Webhook delivery format changes]]></title>
+    <description><![CDATA[<p>Webhook signatures now include a version marker. Update fixtures before deployment.</p>]]></description>
     <link>https://example.com/notices/webhook-format</link>
   </item>
 </channel></rss>

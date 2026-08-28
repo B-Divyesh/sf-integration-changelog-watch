@@ -26,9 +26,11 @@ The container exposes `GET /health`, `POST /api/workspaces`, `GET|POST /api/watc
 cargo run -- demo
 cargo run -- --help
 cargo run -- scan --config examples/watches.json
+# Copy the action ID printed in the new Markdown card, then acknowledge it:
+cargo run -- ack --config examples/watches.json --id <action-id>
 ```
 
-`demo` prints the bundled Markdown action-card sample. `scan --config` reads a repository-owned JSON watch mapping, writes new Markdown action cards under `.integration-changelog-watch/actions/`, and stores hashes plus acknowledgement state in `.integration-changelog-watch/state.json`. The shipped example uses the bundled `examples/sample-feed.xml`, so it works without a network request.
+`demo` prints the bundled Markdown action-card sample. `scan --config` reads a repository-owned JSON watch mapping, writes new Markdown action cards under `.integration-changelog-watch/actions/`, and stores hashes plus acknowledgement state in `.integration-changelog-watch/state.json`. Each card prints its hash-derived action ID; pass that ID to `ack`. The shipped example uses the bundled `examples/sample-feed.xml`, so it works without a network request.
 
 ## Deploy
 

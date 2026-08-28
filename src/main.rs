@@ -519,16 +519,18 @@ struct Notice {
 }
 
 fn parse_notices(text: &str, source_url: &str) -> Vec<Notice> {
+    if let Some(notices) = parse_xml_notices(text, source_url) {
+        return notices;
+    }
+
     let document = Html::parse_document(text);
     let entry = Selector::parse("item, entry").expect("valid selector");
     let title = Selector::parse("title").expect("valid selector");
     let description = Selector::parse("description, summary, content").expect("valid selector");
     let link = Selector::parse("link").expect("valid selector");
-    let rss_links = rss_item_links(text);
     let mut notices: Vec<Notice> = document
         .select(&entry)
-        .enumerate()
-        .map(|(index, item)| {
+        .map(|item| {
             let item_title = item.select(&title).next().map(text_of).unwrap_or_default();
             let excerpt = item
                 .select(&description)
@@ -545,11 +547,6 @@ fn parse_notices(text: &str, source_url: &str) -> Vec<Notice> {
                     })
                 })
                 .unwrap_or_else(|| source_url.to_owned());
-            let item_url = if item_url == source_url {
-                rss_links.get(index).cloned().unwrap_or(item_url)
-            } else {
-                item_url
-            };
             Notice {
                 title: item_title,
                 excerpt,
@@ -572,17 +569,65 @@ fn parse_notices(text: &str, source_url: &str) -> Vec<Notice> {
     notices
 }
 
-fn rss_item_links(text: &str) -> Vec<String> {
-    text.split("<item")
-        .skip(1)
-        .filter_map(|item| item.split("</item>").next())
-        .filter_map(|item| item.split("<link").nth(1))
-        .filter_map(|item| item.split_once('>').map(|(_, value)| value))
-        .filter_map(|item| item.split("</link>").next())
-        .map(str::trim)
-        .filter(|link| !link.is_empty())
-        .map(str::to_owned)
-        .collect()
+fn parse_xml_notices(text: &str, source_url: &str) -> Option<Vec<Notice>> {
+    let document = roxmltree::Document::parse(text).ok()?;
+    let entries: Vec<_> = document
+        .descendants()
+        .filter(|node| node.is_element() && matches!(node.tag_name().name(), "item" | "entry"))
+        .collect();
+    if entries.is_empty() {
+        return None;
+    }
+    Some(
+        entries
+            .into_iter()
+            .map(|entry| {
+                let child = |names: &[&str]| {
+                    entry
+                        .children()
+                        .find(|node| node.is_element() && names.contains(&node.tag_name().name()))
+                };
+                let title = child(&["title"]).map(xml_node_text).unwrap_or_default();
+                let excerpt = child(&["description", "summary", "content"])
+                    .map(xml_node_text)
+                    .unwrap_or_default();
+                let item_url = child(&["link"])
+                    .and_then(|link| {
+                        link.attribute("href")
+                            .map(str::to_owned)
+                            .or_else(|| nonempty(xml_node_text(link)))
+                    })
+                    .unwrap_or_else(|| source_url.to_owned());
+                Notice {
+                    title,
+                    excerpt,
+                    url: absolute_url(source_url, &item_url),
+                }
+            })
+            .collect(),
+    )
+}
+
+fn xml_node_text(node: roxmltree::Node<'_, '_>) -> String {
+    let raw = node
+        .descendants()
+        .filter(|descendant| descendant.is_text())
+        .filter_map(|descendant| descendant.text())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let fragment = Html::parse_fragment(&raw);
+    fragment
+        .root_element()
+        .text()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn nonempty(value: String) -> Option<String> {
+    (!value.is_empty()).then_some(value)
 }
 
 fn text_of(element: scraper::ElementRef<'_>) -> String {
@@ -722,24 +767,31 @@ fn internal(_: sqlx::Error) -> ApiError {
     )
 }
 
-/// Rate-limit from the TCP peer that the factory ingress opens to this container.
-/// We deliberately ignore `X-Forwarded-For`: accepting a client supplied value
-/// would let a caller select a fresh bucket for every request.
+/// The factory ingress sanitizes `X-Forwarded-For`; its first hop is the client.
+/// Later values describe proxies and cannot select a different bucket.
 async fn rate_limit(
     State(app): State<App>,
     request: Request<axum::body::Body>,
     next: Next,
 ) -> Response {
-    let peer = request
+    let socket_peer = request
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
         .map(|peer| peer.0.ip())
         // This fallback keeps a direct unit/router invocation bounded as well.
         .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
+    let client_ip = request
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .and_then(|value| value.parse::<IpAddr>().ok())
+        .unwrap_or(socket_peer);
     let now = std::time::Instant::now();
     let retry_after = {
         let mut buckets = app.limiter.lock().expect("rate limiter mutex");
-        let bucket = buckets.entry(peer).or_insert(RateBucket {
+        let bucket = buckets.entry(client_ip).or_insert(RateBucket {
             tokens: 40.0,
             refreshed: now,
         });
@@ -1081,7 +1133,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn client_supplied_forwarding_header_cannot_select_a_new_rate_limit_bucket() {
+    async fn ingress_client_ip_shares_one_bucket_across_connections_and_ignores_later_hops() {
         let db = SqlitePoolOptions::new()
             .max_connections(1)
             .connect("sqlite::memory:")
@@ -1097,17 +1149,23 @@ mod tests {
             .layer(middleware::from_fn_with_state(state, rate_limit));
         let mut allowed = 0;
         let mut limited = 0;
-        for _ in 0..80 {
+        for request_number in 0..80 {
             let mut request = Request::builder()
                 .uri("/")
                 .body(axum::body::Body::empty())
                 .unwrap();
-            request
-                .headers_mut()
-                .insert("x-forwarded-for", "198.51.100.77".parse().unwrap());
+            request.headers_mut().insert(
+                "x-forwarded-for",
+                format!("198.51.100.77, 192.0.2.{request_number}")
+                    .parse()
+                    .unwrap(),
+            );
             request
                 .extensions_mut()
-                .insert(ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 4567))));
+                .insert(ConnectInfo(SocketAddr::from((
+                    [10, 0, 0, request_number],
+                    4567,
+                ))));
             let response = app.clone().oneshot(request).await.unwrap();
             if response.status().is_success() {
                 allowed += 1;
@@ -1120,21 +1178,39 @@ mod tests {
         assert_eq!((allowed, limited), (40, 40));
     }
 
+    #[test]
+    fn parses_standard_rss_cdata_as_readable_text() {
+        let notices = parse_notices(
+            "<rss><channel><item><title><![CDATA[Unix V4 Workshop at Low Resource Computing]]></title><description><![CDATA[<p>A webhook migration closes Friday.</p>]]></description><link>https://vendor.example/workshop</link></item></channel></rss>",
+            "https://vendor.example/feed.xml",
+        );
+        assert_eq!(notices.len(), 1);
+        assert_eq!(
+            notices[0].title,
+            "Unix V4 Workshop at Low Resource Computing"
+        );
+        assert_eq!(notices[0].excerpt, "A webhook migration closes Friday.");
+    }
+
     #[tokio::test]
     async fn cli_scan_persists_deduplication_and_acknowledgements_for_local_repository_feeds() {
         let root = std::env::temp_dir().join(format!("icw-cli-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
-        std::fs::write(root.join("feed.xml"), "<rss><channel><item><title>Webhook update</title><description>Move webhook fixture</description><link>https://example.com/notice</link></item></channel></rss>").unwrap();
+        std::fs::write(root.join("feed.xml"), "<rss><channel><item><title><![CDATA[Webhook update]]></title><description><![CDATA[<p>Move webhook fixture</p>]]></description><link>https://example.com/notice</link></item></channel></rss>").unwrap();
         std::fs::write(root.join("watches.json"), r#"{"watches":[{"vendor":"Example","url":"feed.xml","keywords":"webhook","owner":"Maya","version":"","command":"npm test"}]}"#).unwrap();
         let config = root.join("watches.json");
         cli_scan(config.to_str().unwrap()).await.unwrap();
         let state = read_cli_state(&root.join(".integration-changelog-watch")).unwrap();
         assert_eq!(state.actions.len(), 1);
         let id = state.actions[0].id.clone();
-        assert!(root
+        let card_path = root
             .join(".integration-changelog-watch/actions")
-            .join(format!("{id}.md"))
-            .exists());
+            .join(format!("{id}.md"));
+        assert!(card_path.exists());
+        let card = std::fs::read_to_string(card_path).unwrap();
+        assert!(card.contains("# Webhook update"));
+        assert!(card.contains("Move webhook fixture"));
+        assert!(!card.contains("CDATA"));
         cli_scan(config.to_str().unwrap()).await.unwrap();
         assert_eq!(
             read_cli_state(&root.join(".integration-changelog-watch"))
