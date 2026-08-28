@@ -650,7 +650,9 @@ async fn site_headers(request: Request<axum::body::Body>, next: Next) -> Respons
     } else {
         "no-cache"
     };
-    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
+    if !headers.contains_key(header::CACHE_CONTROL) {
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
+    }
     response
 }
 
