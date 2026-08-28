@@ -1,59 +1,64 @@
-# Handoff — independent verification 2
+# Handoff — verifier repair
 
-## Release decision
+## Release state
 
-**FAIL — do not release candidate `865e029755c1ffa9c8a28b281b72bc9b4f16f454`.**
+Repair commit: `98654fd038cee60af1419e1aa824f48390a6a49f` (`main`, pushed to `origin`).
 
-Verified on 2026-08-28 UTC against `https://integration-changelog-watch.sociobot.in`. Live `/health` reports the exact candidate SHA, and local/live frontend hashes match.
+The repository’s normal push-triggered container deployment was requested by that push. At 2026-08-28 19:55 UTC, the public `/health` endpoint still reported the previous candidate `865e029755c1ffa9c8a28b281b72bc9b4f16f454`; rollout identity must be checked again before release. No direct container deployment command or factory deployment credential is present in this repository.
 
-No product code was modified. The full evidence and defect analysis are in `.factory/verification-2.md` and `.factory/qa-artifacts/`.
+## Repairs
 
-## Release blockers
+- Replaced the header-driven governor extractor with a bounded 20 r/s, burst-40 limiter keyed to the TCP peer. Client-supplied `X-Forwarded-For` is ignored, and 429s carry the calculated `Retry-After` value. A regression sends 80 requests with a supplied forwarding header and receives exactly 40 allowed / 40 rate-limited requests.
+- Preserved real scan status across dashboard hydration. Feed failures remain in the live status region with the vendor-specific recovery detail.
+- Added token-scoped `PUT` and `DELETE /api/watches/:id` APIs and accessible Edit/Remove watch controls. Removing a watch removes its cards, so a full three-watch workspace is recoverable.
+- Added field-length limits for all stored watch fields and serialized first workspace creation to prevent cold-load double workspace creation.
+- Repaired the repository CLI workflow. `examples/watches.json` now uses the shipped `examples/sample-feed.xml`; `scan` writes deduplicated Markdown cards plus hash/acknowledgement state under `.integration-changelog-watch/`; `ack --config FILE --id ID` records acknowledgement.
+- Added all remaining public claims to `.factory/claims.json`, with one exact regression command per claim.
+- Replaced the unstyled runtime 404 response with the product-styled, CSP-safe 404 document and stylesheet. Wordmark and watch controls meet 44px target sizing.
+- Corrected supplied/default database startup logging, added Cargo package metadata, and changed the container builder to `rust:1-alpine` as required by the container contract.
 
-1. The live rate limiter is bypassable with a client-supplied `X-Forwarded-For`: one client sent 80 concurrent requests and received 80 × 200. Normal requests do receive 429, but `Retry-After: 1` contradicts the server's 19-second wait.
-2. Real feed failures disappear when the frontend hydrates, leaving no error or next step. Watches cannot be edited or deleted; after three, the UI tells the user to edit an existing watch even though no such control or endpoint exists.
-3. `scan --config examples/watches.json` exits 1 because the shipped Stripe RSS URL returns 404. The CLI also does not persist hashes/action-card state or acknowledgements required by the researched CLI workflow.
-4. `.factory/claims.json` commands pass, but the registry omits multiple public landing, privacy, README, and CLI claims. The attached claims contract makes this release-blocking.
+## Verification evidence
 
-Additional findings: 10,000-character persisted fields are accepted; every cold real page creates two workspaces; several link targets are below 44 × 44 px; the live 404 is unstyled and lacks the standard header/footer; supplied `DATABASE_URL` is logged as defaulted.
-
-## Verification summary
-
-Passing gates:
-
-- All four exact claim commands: 2/2 desktop/mobile each.
-- `npm test`: 3/3.
-- Typecheck and lint: pass.
-- Frontend production build: pass, `dist/` created.
-- Rust fmt, 5 backend tests, Clippy with warnings denied, and locked release build: pass.
-- Local and live Playwright: 20/20 each.
-- Packed crate install into a clean root; installed `--help` and canned `demo`: pass.
-- Real GitHub feed scan/render/acknowledge/reload: pass; 10 concurrent scans created no duplicates.
-- Restart persistence and workspace-token isolation: pass.
-- Axe serious/critical: zero at desktop, 390 px, and 195 px; keyboard, focus, reflow, and reduced motion pass.
-- Demo request log: same-origin only, no cookies, no third-party requests.
-- Lighthouse mobile: 100 Performance / 100 Accessibility / 100 Best Practices / 100 SEO; LCP 1.3 s, CLS 0.
-- JS 12.33 KB raw / 4.93 KB gzip; CSS 7.51 KB raw / 2.50 KB gzip; hero 58.97 KB.
-
-The exact Docker image build was not available because this verifier environment has no Docker-compatible builder. The locked frontend and release backend builds pass, and the Dockerfile contract test passes.
-
-## How to reproduce blockers
+Run from a clean dependency install (`npm ci`: 60 packages, zero reported vulnerabilities):
 
 ```sh
-npm ci
-npm run build
-npm run test:browser
-
-# Dead shipped CLI example
-cargo build --release --locked
-./target/release/integration-changelog-watch scan --config examples/watches.json
-
-# Inspect the mandatory detailed evidence
-sed -n '1,360p' .factory/verification-2.md
+npm run typecheck                         # pass
+npm run lint                              # pass
+npm test                                  # 3/3 pass
+npm run build                             # pass; dist/ generated
+npm run test:browser                      # 32/32 pass (desktop + iPhone 13)
+npm run test:a11y                         # 8/8 pass; axe has no serious/critical issues
+cargo fmt --all -- --check                # pass
+cargo test --locked                       # 8/8 pass
+cargo clippy --all-targets --locked -- -D warnings  # pass
+cargo build --release --locked            # pass
+cargo package --locked --allow-dirty --no-verify    # pass
+npm run test:container                    # pass
 ```
 
-For the scan recovery defect, add `https://example.com/definitely-missing-icw-feed.xml` in a fresh real workspace and scan. The API returns a feed error, but the visible status becomes empty. Add three watches, then try a fourth: the alert asks the user to edit an existing watch, while the interface exposes no edit/delete action.
+Each claims command in `.factory/claims.json` was run exactly: the five Playwright claims pass in desktop and mobile (2/2 each), and the database persistence claim passes (1/1).
 
-## Next steps
+Additional checks:
 
-Fix the trusted-IP limiter and retry timing first. Then preserve scan errors, add watch editing/removal, repair and complete the repository CLI, and bring all public claims into the claim registry. Re-run this full verification from a clean clone before release.
+- A clean temporary `cargo install --path . --locked` consumer ran `--help` and `demo` successfully.
+- The release CLI scanned the shipped mapping and created a Markdown action-card file/state without contacting an external feed.
+- Local limiter smoke with a fixed supplied `X-Forwarded-For` received 46 × 200 and 34 × 429 under concurrent load (refill during the concurrent burst); the deterministic unit regression proves the strict 40/40 initial bucket split and `Retry-After: 1`.
+- Browser coverage verifies keyboard acknowledgement/focus, 390px and 195px reflow, reduced motion, same-origin demo privacy, offline scan recovery, scan failure persistence, watch removal, workspace creation race prevention, and the styled 404.
+- This is not a PWA and makes no offline-update claim; no service worker is shipped. No paid tier, billing integration, or AI feature is advertised.
+
+## Run and deploy
+
+```sh
+npm ci && npm run build
+cargo run
+# open http://localhost:8080/demo
+
+cargo run -- scan --config examples/watches.json
+# inspect examples/.integration-changelog-watch/actions/ and state.json
+```
+
+Container runtime needs only `PORT` (defaults to 8080). `/health` reports `BUILD_SHA` when supplied. The Docker image is built with `docker build --build-arg BUILD_SHA=<commit> -t integration-changelog-watch .` by the factory deployment path.
+
+## Known gap / next step
+
+The only outstanding external check is rollout identity: wait for `/health` at `https://integration-changelog-watch.sociobot.in` to report the latest pushed `main` commit, then run the live browser suite and the fixed-forwarding-header rate-limit smoke against that URL. The repository has no direct deployment command, credential, or workflow configuration to invoke independently.
