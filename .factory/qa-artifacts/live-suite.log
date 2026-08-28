@@ -1,0 +1,74 @@
+===== live health =====
+HTTP/2 200 
+content-type: application/json
+cache-control: no-store, private
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+strict-transport-security: max-age=31536000; includeSubDomains
+content-length: 62
+date: Fri, 28 Aug 2026 19:02:44 GMT
+
+{"build":"865e029755c1ffa9c8a28b281b72bc9b4f16f454","ok":true}
+===== unauth API =====
+HTTP/2 401 
+content-type: text/plain; charset=utf-8
+cache-control: no-store, private
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+strict-transport-security: max-age=31536000; includeSubDomains
+content-length: 62
+date: Fri, 28 Aug 2026 19:02:44 GMT
+
+Create or restore this browser workspace before using the API.
+===== routes/assets =====
+/ status=200 bytes=1458 type=text/html
+/demo status=200 bytes=1458 type=text/html
+/privacy status=200 bytes=1458 type=text/html
+/terms status=200 bytes=1458 type=text/html
+/not-a-real-route status=404 bytes=348 type=text/html; charset=utf-8
+/assets/index-CWYyw5pc.js status=200 bytes=12331 type=text/javascript
+/assets/index-CPi_kfO2.css status=200 bytes=7507 type=text/css
+/paper-cut-hero.webp status=200 bytes=58974 type=image/webp
+/robots.txt status=200 bytes=92 type=text/plain
+/sitemap.xml status=200 bytes=404 type=text/xml
+/social-card.jpg status=200 bytes=163227 type=image/jpeg
+===== local vs live hashes =====
+index.html local=14760d05b669ddb10627615ce7ebb61d51915871897a78644e656594c56ceb36
+index.html live=e55b4f78b3d10b01927a843e14059fe238cc968ae56bb6c642523a800f97c407
+assets/index-CWYyw5pc.js local=fcf81269c2d8eb365e1b8f472c05943e67eab537534a10b3c367f49df971837b
+assets/index-CWYyw5pc.js live=fcf81269c2d8eb365e1b8f472c05943e67eab537534a10b3c367f49df971837b
+assets/index-CPi_kfO2.css local=6062de6bb105a6f67d483dc7d6c306bee59960900575daf4840fd87fb2441431
+assets/index-CPi_kfO2.css live=6062de6bb105a6f67d483dc7d6c306bee59960900575daf4840fd87fb2441431
+paper-cut-hero.webp local=fb0d415bec60a017de28d29ee05795fbf156fc3ab069dab80d3bd7dce49a252b
+paper-cut-hero.webp live=fb0d415bec60a017de28d29ee05795fbf156fc3ab069dab80d3bd7dce49a252b
+social-card.jpg local=8c7368837b1c4c7c397306a16a51f1a16a05fa6ff42a2e9ebcb3c8a19f99e55b
+social-card.jpg live=8c7368837b1c4c7c397306a16a51f1a16a05fa6ff42a2e9ebcb3c8a19f99e55b
+===== live browser suite =====
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test
+
+
+Running 20 tests using 2 workers
+(node:13661) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13662) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13662) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13661) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··········(node:13879) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13879) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··········
+  20 passed (22.4s)

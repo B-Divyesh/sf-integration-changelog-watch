@@ -1,0 +1,6 @@
+warning: manifest has no description, license, license-file, documentation, homepage or repository
+  |
+  = note: see https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info
+   Packaging integration-changelog-watch v1.0.0 (/work/repo)
+    Updating crates.io index
+    Packaged 69 files, 5.8MiB (5.1MiB compressed)
