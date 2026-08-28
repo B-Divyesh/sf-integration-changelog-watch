@@ -29,6 +29,7 @@ test('keyboard navigation exposes the skip link and can acknowledge a demo actio
   await page.getByRole('button', { name: 'Acknowledge action' }).focus()
   await page.keyboard.press('Space')
   await expect(page.getByText('No actions need an owner')).toBeVisible()
+  await expect(page.locator('[data-action="a1"]')).toBeFocused()
 })
 
 test('offline scan gives a useful next step without making a request', async ({ page, context }) => {
@@ -38,7 +39,7 @@ test('offline scan gives a useful next step without making a request', async ({ 
   await expect(page.locator('#notice')).toContainText('You are offline. Connect, then scan again.')
 })
 
-test('demo standard flow stays same-origin and does not write real workspace data', async ({ page }) => {
+test('@claim:demo-local demo stays same-origin and does not write real workspace data', async ({ page }) => {
   const requests: string[] = []
   page.on('request', request => requests.push(request.url()))
   await page.goto('/demo')

@@ -12,5 +12,19 @@
     "where": "dashboard export button",
     "test": "npm run build && npm run test:browser -- --grep @claim:csv-export",
     "sandbox": "demo action cards produce a header plus one row per action"
+  },
+  {
+    "id": "demo-local",
+    "claim": "Demo data is separate from the real workspace and makes only same-origin requests.",
+    "where": "demo banner and privacy page",
+    "test": "npm run build && npm run test:browser -- --grep @claim:demo-local",
+    "sandbox": "fresh demo browser context; acknowledge a sample card and inspect storage and requests"
+  },
+  {
+    "id": "workspace-boundary",
+    "claim": "Private workspace tokens separate visitors, and private feed addresses are blocked.",
+    "where": "landing fact and privacy/terms pages",
+    "test": "npm run build && npm run test:browser -- --grep @claim:workspace-boundary",
+    "sandbox": "fresh browser context creates a workspace, then attempts unauthenticated and loopback API access"
   }
 ]

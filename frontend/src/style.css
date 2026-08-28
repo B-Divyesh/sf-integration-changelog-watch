@@ -250,6 +250,18 @@ figcaption {
   padding: 20px;
   clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
 }
+.action,
+.primary,
+.secondary,
+.link-button {
+  transition: transform 220ms ease, box-shadow 220ms ease, outline-color 220ms ease;
+}
+@media (hover: hover) {
+  .action:hover,
+  .watches:hover {
+    transform: translateY(-2px);
+  }
+}
 .action {
   border-left: 9px solid var(--amber);
 }
@@ -418,8 +430,8 @@ code {
   font-size: 0.9rem;
 }
 .demo-banner button {
-  min-height: 34px;
-  padding: 4px 8px;
+  min-height: 44px;
+  padding: 7px 10px;
   color: #fffaf0;
   background: transparent;
   border-color: #fffaf0;
@@ -451,6 +463,12 @@ footer {
 }
 footer p {
   margin: 0;
+}
+footer a,
+.card-actions a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 @media (max-width: 720px) {
   header,
@@ -517,6 +535,43 @@ footer p {
   }
   dl {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 300px) {
+  header,
+  main,
+  footer {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  header {
+    display: block;
+    padding-bottom: 8px;
+  }
+  nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 8px;
+  }
+  .hero h1 {
+    font-size: 2.25rem;
+    overflow-wrap: anywhere;
+  }
+  .dash-buttons button,
+  .hero-actions button,
+  .card-actions a,
+  .card-actions button {
+    width: 100%;
+  }
+  .action,
+  .watches,
+  .empty {
+    padding: 12px;
+    clip-path: none;
+  }
+  #license {
+    min-width: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {

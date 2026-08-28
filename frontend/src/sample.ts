@@ -1,5 +1,5 @@
-export type Watch = {id:string; vendor:string; url:string; keywords:string; owner:string; version:string; command:string; lastScan?:string}
-export type Action = {id:string; watchId:string; title:string; excerpt:string; matched:string; url:string; owner:string; command:string; acknowledged:boolean; seenAt:string}
+export type Watch = {id:string|number; vendor:string; url:string; keywords:string; owner:string; version:string; command:string; lastScan?:string}
+export type Action = {id:string|number; watchId:string|number; title:string; excerpt:string; matched:string; url:string; owner:string; command:string; acknowledged:boolean; seenAt:string}
 
 export const sampleWatches: Watch[] = [
  {id:'stripe',vendor:'Stripe',url:'https://docs.stripe.com/changelog/rss.xml',keywords:'breaking,api version,webhook',owner:'Maya · Payments',version:'stripe-node 16.2',command:'pnpm test:stripe'},
