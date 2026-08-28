@@ -54,7 +54,10 @@ test('@claim:workspace-boundary workspace tokens isolate records, reject anonymo
   expect(result).toEqual({ unauthenticated: 401, firstWatch: 201, privateFeed: 400, secondWatches: 200, secondWorkspaceWatchCount: 0 })
 })
 
-test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }) => {
+test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }, testInfo) => {
+  // This is a backend consistency probe. Running the same 24-read burst in
+  // both browser projects would intentionally exceed the per-IP rate limit.
+  test.skip(testInfo.project.name === 'mobile', 'The desktop project covers this one shared API burst.')
   await page.goto('/')
   await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
   const statuses = await page.evaluate(async () => {

@@ -192,9 +192,8 @@ async fn main() {
         .unwrap_or_else(default_database_url);
     let db = match SqlitePoolOptions::new()
         // This deployment deliberately runs one replica with SQLite on the
-        // mounted Azure Files volume. A single pool connection keeps SQLite's
-        // file locking local to that process and queues the dashboard's
-        // parallel reads safely instead of leaving them pending on SMB.
+        // mounted Azure Files volume. A single pool connection queues the
+        // dashboard's parallel reads in-process before they reach SQLite.
         .max_connections(1)
         .connect(&db_url)
         .await
@@ -272,7 +271,10 @@ async fn main() {
 }
 
 fn default_database_url() -> String {
-    "sqlite:/data/changelog-watch.db?mode=rwc".to_owned()
+    // Azure Files does not support SQLite's byte-range lock protocol. `nolock`
+    // is safe only because the deployment template enforces one replica and
+    // this process opens one database connection.
+    "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1".to_owned()
 }
 
 async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -1138,7 +1140,7 @@ mod tests {
     async fn default_database_survives_restart_when_data_is_mounted() {
         assert_eq!(
             default_database_url(),
-            "sqlite:/data/changelog-watch.db?mode=rwc"
+            "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1"
         );
         let root = std::env::temp_dir().join(format!("icw-data-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
