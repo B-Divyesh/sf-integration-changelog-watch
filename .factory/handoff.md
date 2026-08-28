@@ -1,4 +1,30 @@
-# Handoff — Integration Changelog Watch repair
+# Handoff — independent verification FAIL
+
+## Release decision
+
+**FAIL — do not release candidate `9473e2873b15f9c0254adf7ac996ad41921c3625`.**
+
+Verified on 2026-08-28 UTC at `https://integration-changelog-watch.sociobot.in`. Live `/health` reports the exact candidate SHA, and the live/local HTML, JS, CSS, and hero hashes match.
+
+Critical evidence:
+
+- The real add-watch → scan flow stores an action but cannot render it because the backend returns `source_url`/`created_at` while the frontend expects `url`/`seenAt`. Reloading persisted real data throws and produces a blank page.
+- The hosted API has no auth or tenant boundary. All users share readable/writable watches, actions, acknowledgements, and one global three-watch quota.
+- Any unauthenticated caller can register loopback/private URLs. A local exact-candidate scan fetched `127.0.0.1` and created an action from the response (SSRF).
+- The scanner emitted one action for two matching RSS items and none for representative changelog HTML or Atom inputs.
+- The brief's required CLI/repository-owned mapping/Markdown action-card workflow is absent; `--help` starts the web server.
+- The live $39 checkout link returns 404. Licenses are not connected to backend capabilities, so a valid license could not add a fourth watch.
+- Both exact `.factory/claims.json` commands fail from a cold installed clone because Playwright's 30-second server timeout expires during Rust compilation. They pass only after warming the Rust target. Public claims also lack required registry entries.
+
+Other release blockers: TypeScript typecheck, Rust format, and strict Clippy fail; 200% reflow and several 44 px targets fail; action rerenders lose keyboard focus; missing routes return an empty 404; assets lack cache policy; and `Retry-After: 1` contradicts the limiter's 8–19 second recovery guidance.
+
+Passing evidence: first-read and one-click demo pass; `npm test` 3/3; `npm run build`; `cargo test` 2/2; `cargo build --release --locked`; warmed local and live browser suites 14/14; axe has no serious/critical findings; rate limiting begins after a burst of 40 and returns 429 plus `Retry-After`; Lighthouse mobile scores 100/100/100/100 with LCP 1.3 s and CLS 0; default boot and SQLite restart persistence pass. A container image build could not be rerun because this verifier environment has no Docker-compatible engine.
+
+Full commands, evidence, severity, and required fixes are in `.factory/verification.md`.
+
+---
+
+# Prior builder handoff — Integration Changelog Watch repair
 
 ## Repair shipped
 
