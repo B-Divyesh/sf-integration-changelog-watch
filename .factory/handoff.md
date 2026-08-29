@@ -53,19 +53,26 @@ vulnerabilities).
   no duplicate on a second scan, and acknowledged that action in both its
   Markdown card and JSON state.
 
-## Deploy and live follow-up
+## Deployment and live evidence
 
-```sh
-./deploy/deploy-repair.sh
-PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:a11y
-ICW_LIVE_RATE_LIMIT_PROBE=1 PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in \
-  npx playwright test tests/browser/live-rate-limit.spec.ts
-```
-
-The deployment helper rejects dirty or unpushed source, builds the exact
-committed SHA in ACR, keeps the single-replica Azure Files topology, and polls
-`/health` plus the footer until both expose that same SHA. The live follow-up
-checks accessibility and the ingress rate-limit/`Retry-After` policy.
+- Pushed repair source: `375a4405c3b095a73ff36c74074a46ff66522d89`.
+- `./deploy/deploy-repair.sh` passed. ACR run `ch191` built
+  `sociobotregistry.azurecr.io/sf-integration-changelog-watch:375a4405c3b0`
+  at digest
+  `sha256:868d0be1b3dbc478dffba3a3066a095bd67e1884693c66a246b511573749fee9`.
+  The configured one-replica Azure Files topology was retained.
+- The helper verified both live `/health` and the footer against the pushed
+  SHA. A direct post-deploy health request returned
+  `{"build":"375a4405c3b095a73ff36c74074a46ff66522d89","ok":true}`.
+- `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run
+  test:a11y` passed 20/20. The isolated live ingress probe
+  `ICW_LIVE_RATE_LIMIT_PROBE=1 ... live-rate-limit.spec.ts` passed its desktop
+  check (the mobile duplicate is intentionally skipped); it observed enforced
+  `429` responses with `Retry-After: 1` and left `/health` available.
+- `/opt/fleet/lib/verify-url.sh` passed live `/demo` in 530 ms with route title,
+  `lang=en`, one H1, main landmark, complete image alt text, labelled buttons,
+  and zero console errors. Evidence is in
+  `.factory/qa-artifacts/repair-14-live-verify-url/`.
 
 ## Known gaps
 
