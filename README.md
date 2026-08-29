@@ -51,7 +51,7 @@ cargo run -- ack --config examples/watches.json --id <action-id>
 
 ## Hosted workspace scope
 
-The hosted workspace holds up to three watches. Use the local CLI when you need four or more watch mappings.
+The hosted workspace holds up to three watches. Use the local CLI for a four-watch mapping.
 
 ## Deploy
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('@live:rate-limit-spoof-resistance keeps caller-supplied X-Forwarded-For prefixes in one client bucket', async ({ request }) => {
+test('@live:rate-limit-spoof-resistance uses the ingress client and keeps health available', async ({ request }) => {
   test.skip(process.env.ICW_LIVE_RATE_LIMIT_PROBE !== '1', 'Run only as an isolated post-deploy probe against the hosted ingress.')
 
   // Azure Container Apps appends the actual client address at the right of
@@ -17,4 +17,8 @@ test('@live:rate-limit-spoof-resistance keeps caller-supplied X-Forwarded-For pr
   expect(allowed).toHaveLength(40)
   expect(limited).toHaveLength(40)
   expect(limited.every(response => response.retryAfter === '1')).toBe(true)
+
+  const health = await request.get('/health')
+  expect(health.status()).toBe(200)
+  expect(await health.json()).toMatchObject({ ok: true })
 })

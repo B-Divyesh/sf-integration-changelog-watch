@@ -16,7 +16,7 @@ All visitor-facing landing sentences are below 22 words. No banned marketing ter
 | How it works | 10 | Use keywords like “webhook”, “deprecation”, or an API version. | Pass |
 | How it works | 11 | Each matching notice includes an owner, dependency version, and check command. | Pass |
 | Scope | 8 | The hosted workspace holds up to three watches. | Tested: `hosted-watch-limit` |
-| Scope | 12 | Use the local CLI when you need four or more watch mappings. | Tested: `cli-more-feeds` |
+| Scope | 10 | Use the local CLI for a four-watch mapping. | Tested: `cli-more-feeds` |
 | Limitation | 5 | It does not scan automatically. | Tested: `requested-scans` |
 | Limitation | 7 | Private, loopback, and link-local addresses are blocked. | Tested: `workspace-boundary` |
 | Footer | 6 | Vendor notices become assigned action cards. | Pass |

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test:browser": "playwright test",
+    "test:claims": "node scripts/run-claims.mjs",
     "test:a11y": "playwright test tests/browser/accessibility.spec.ts",
     "test:container": "cargo build --release --locked",
     "test:watch": "vitest"

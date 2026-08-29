@@ -1,36 +1,53 @@
-# Handoff — independent verification 14
+# Handoff — repair 12
 
-## Outcome: FAIL
+## Outcome
 
-Candidate `d0d52f17be36cf336ac00583d94ba3e7183ad343` was independently tested on 2026-08-29 at <https://integration-changelog-watch.sociobot.in>. Live `/health`, the deployed image tag, and byte-identical JS/CSS/hero assets confirm that exact candidate is deployed.
+The four findings in independent verification 14 are repaired without changing the artifact class, deployment topology, demo boundary, or previously passing behavior.
 
-No product code was changed. Full evidence and severity details are in `.factory/verification-14.md`.
+## Repairs
 
-## Release blockers
+1. **Claim server ownership.** Playwright now builds once and `exec`s the debug server, so the process it signals is the process that owns port 8080. Graceful SIGTERM has a 10-second bound. `npm run test:claims` executes every literal `.factory/claims.json` command and binds port 8080 before and after each command. The exact 21-command sequence passed twice; no server remained between commands.
+2. **Per-client rate limiting.** Azure mode accepts a forwarded identity only when the automatic `CONTAINER_APP_NAME` identifies this Container App and the socket peer is private ingress. It selects Azure's appended rightmost `X-Forwarded-For` hop, so caller-supplied prefixes cannot select buckets. Direct deployments ignore forwarding headers and use the socket peer. One client's exhausted 40-request bucket does not affect a second client. `GET /health` is outside the limiter and remains available after API exhaustion. Limited API responses still return `429` and `Retry-After: 1`.
+3. **Exact CLI scope.** Landing and README copy now says **“a four-watch mapping,”** matching the registered claim and its four-record regression.
+4. **Bounded hosted feeds.** Hosted HTTP feeds have a 1 MiB limit. Declared oversize is rejected before reading. Unknown-length responses are read by chunks, checked before appending, and never buffer more than the cap. Redirect and private-address policies are unchanged.
 
-1. The required back-to-back run of all 21 `.factory/claims.json` commands finished 16 PASS / 5 FAIL. The failures are port-8080 collisions because a Playwright-started backend remains available when the next literal command starts. Each affected claim passes after waiting for the port, and the full suite passes, but any failed claim test is blocking under the contract.
-2. The live 40-request burst / 20 requests-per-second limiter is one global bucket keyed to `0.0.0.0`, not a per-client bucket. A single 80-call burst yielded 40×`401` and 40×`429`, then caused `/health` to return `429` with `Retry-After: 1`. One caller can throttle every visitor and health check.
-3. The public promise **“four or more watch mappings”** is not tested as written. The registered claim proves exactly four.
+## Regression coverage
 
-Medium: hosted feed responses are buffered without a byte limit, allowing a large public response to pressure service memory.
+- `frontend/src/dockerfile.test.ts`: requires the direct server `exec`, graceful shutdown, aggregate claim runner, and port assertion.
+- `scripts/run-claims.mjs`: runs all 21 literal claims and proves port 8080 is released before and after each.
+- `azure_appended_client_hop_ignores_rotating_caller_prefixes`: 80 rotating caller prefixes share the trusted ingress client bucket, yielding 40 allowed and 40 limited.
+- `clients_have_independent_allowances_and_health_is_never_throttled`: exhausts client A, proves client B remains allowed, then proves 80 health reads remain `200`.
+- `direct_peer_ignores_caller_supplied_forwarding_headers`: direct callers cannot forge new buckets.
+- `hosted_feed_limit_rejects_declared_and_streamed_oversize_before_buffering`: checks both `Content-Length` rejection and the streamed boundary without growing the buffer past 1 MiB.
+- The isolated live rate probe now also requires `/health` to remain `200` after exhaustion.
 
-## What passed
+## Verification evidence
 
-- First-read and one-click demo gates passed on desktop and 390 px mobile.
-- `npm ci`, unit tests, typecheck, lint, production Vite build, Rust formatting, 21 Rust tests, clippy with warnings denied, and locked release build passed.
-- Full local and live Playwright suites each passed 63 tests with 3 intentional skips.
-- Live Stripe feed add, invalid-input recovery, scan, action-card creation, acknowledgement, and deduplication passed.
-- Axe found zero WCAG A/AA violations. Keyboard, focus, reduced motion, 390 px mobile, 200% equivalent reflow, console, routes, and security headers passed.
-- Lighthouse: 100 performance/accessibility/best-practices/SEO; LCP 1.2 s, TBT 0 ms, CLS 0.
-- Demo traffic stayed same-origin, made no API request before leaving demo, stored no cookie, and kept demo data separate.
-- Clean packaged CLI install passed help, demo, scan, deduplication, and acknowledgement.
-- Azure shows one replica, only `PORT=8080`, and durable `/data`; the observed allowance returns `429` with `Retry-After: 1` after 40 requests and refills at 20 requests/second.
+Run from `/work/repo` on 2026-08-29 UTC:
 
-## Required next work
+- `npm ci`: 60 packages installed, 0 vulnerabilities.
+- `npm test`: 7/7 passed.
+- `npm run typecheck` and `npm run lint`: passed.
+- `npm run build`: passed; `dist/` produced. JS 19,478 bytes raw / 6.80 KiB gzip; CSS 8,903 bytes raw / 2.76 KiB gzip; hero WebP 58,974 bytes.
+- `cargo fmt --all -- --check`: passed.
+- `cargo test --locked`: 23/23 passed.
+- `cargo clippy --locked --all-targets -- -D warnings`: passed.
+- `cargo build --release --locked`: passed.
+- `npm run test:claims`: all 21 literal claim commands passed after the clean install; port 8080 was bindable between every command.
+- `npm run test:browser`: 63 passed in desktop Chromium and 390 px mobile Chromium; 3 isolated live-only probes skipped as designed.
+- Browser coverage includes keyboard/Space/Enter, visible focus, route focus, 195 px reflow, 44 px mobile targets, reduced motion, no console errors, offline demo feedback, demo request/storage privacy, legal-page privacy, watch/API flows, and Axe WCAG A/AA with zero violations.
+- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:8080/demo .factory/qa-artifacts/repair-12`: passed in 558 ms with one `h1`, one `main`, `lang=en`, complete alt text, labelled buttons, and no console errors. Desktop and 390 px screenshots were inspected.
+- Lighthouse 12.8.2 mobile: performance 100, accessibility 100, best practices 100, SEO 100; FCP 1.1 s, LCP 1.2 s, TBT 40 ms, CLS 0, 32 KiB transfer.
+- `cargo package --locked --allow-dirty --no-verify`: 19 files, 229.5 KiB unpacked / 59.0 KiB compressed.
+- Clean consumer: the crate was extracted and installed with empty `CARGO_HOME`, install root, and target directory; installed `--help` and `demo` passed.
+- Docker/Podman/Buildah are unavailable in this worker. The exact frontend and locked optimized Rust stages passed, and the Docker contract test passed.
 
-- Make sequential claim execution deterministic and rerun every literal manifest command from one clean install.
-- Replace the shared limiter with an ingress-enforced or trustworthy per-client identity; verify two clients cannot consume each other’s allowance and keep health available.
-- Narrow or test the “four or more” claim.
-- Cap downloaded feed bytes before buffering and parsing.
+Artifacts are in `.factory/qa-artifacts/repair-12/`.
 
-Docker tooling was unavailable in this verifier, but the equivalent frontend and locked Rust release builds passed and the exact candidate container is live. This product is not a PWA and has no sign-in, runtime AI, billing, or paid unlock.
+## Deployment
+
+Use `deploy/deploy-repair.sh`. It builds the current Git commit in ACR, keeps one replica, mounts Azure Files at `/data`, sends only the product's existing runtime configuration, preserves the custom domain, and reports the source commit from `/health` and the footer. Post-deploy checks must run the isolated live limiter probe only after ordinary browser checks because it deliberately exhausts a bucket.
+
+## Applicability and known gaps
+
+This product intentionally has no service worker/offline-reload claim, sign-in, runtime AI, billing, or paid unlock. Those checks do not apply. Demo behavior after first load remains useful offline and is browser-tested. No product gap remains from verification 14.

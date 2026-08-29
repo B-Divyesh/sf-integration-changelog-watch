@@ -37,6 +37,22 @@ describe('container build contract', () => {
     expect(readFileSync(new URL('../../src/main.rs', import.meta.url), 'utf8')).toContain('reconcile_production_topology')
   })
 
+  it('makes each Playwright claim command own and stop its port 8080 server', () => {
+    const config = readFileSync(new URL('../../playwright.config.ts', import.meta.url), 'utf8')
+    const packageJson = JSON.parse(
+      readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+    ) as { scripts: Record<string, string> }
+    const claimRunner = readFileSync(
+      new URL('../../scripts/run-claims.mjs', import.meta.url),
+      'utf8',
+    )
+
+    expect(config).toContain("command: 'cargo build --quiet && exec target/debug/integration-changelog-watch'")
+    expect(config).toContain("gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 }")
+    expect(packageJson.scripts['test:claims']).toBe('node scripts/run-claims.mjs')
+    expect(claimRunner).toContain('await assertClaimPortReleased()')
+  })
+
   it('ships the required square 180px touch icon', () => {
     const png = readFileSync(new URL('../public/apple-touch-icon.png', import.meta.url))
     expect(png.subarray(1, 4).toString()).toBe('PNG')

@@ -16,10 +16,14 @@ export default defineConfig({
     // The production default is the mounted /data volume. Browser tests use
     // an explicit local durable file so they never exercise an image-local
     // fallback that production must not have.
-    command: 'cargo run --quiet',
+    // Build first, then replace the shell with the server process. Playwright
+    // can now signal and await the process that owns port 8080 instead of
+    // terminating Cargo while its spawned binary is still shutting down.
+    command: 'cargo build --quiet && exec target/debug/integration-changelog-watch',
     env: { DATABASE_URL: 'sqlite:changelog-watch.db?mode=rwc' },
     url: 'http://127.0.0.1:8080/health',
     reuseExistingServer: false,
     timeout: 180_000,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
   },
 })

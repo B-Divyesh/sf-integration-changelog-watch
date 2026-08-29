@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{ConnectInfo, Path, State},
     http::{header, HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -33,6 +33,7 @@ struct App {
     db: SqlitePool,
     build: String,
     limiter: Arc<Mutex<HashMap<IpAddr, RateBucket>>>,
+    trust_forwarded_for: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -42,6 +43,7 @@ struct RateBucket {
 }
 
 const RATE_BUCKET_IDLE_TTL: Duration = Duration::from_secs(15 * 60);
+const MAX_HOSTED_FEED_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Serialize, FromRow)]
 struct Watch {
@@ -228,6 +230,10 @@ async fn main() {
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| "dev".to_owned()),
         limiter: Arc::new(Mutex::new(HashMap::new())),
+        // Azure Container Apps appends the network client to X-Forwarded-For.
+        // Never trust that header when this binary is reached directly.
+        trust_forwarded_for: env::var("CONTAINER_APP_NAME").as_deref()
+            == Ok("sf-integration-changelog-watch"),
     };
     info!(
         database_url = if supplied_database_url.is_some() {
@@ -235,11 +241,15 @@ async fn main() {
         } else {
             "defaulted"
         },
+        rate_limit_identity = if state.trust_forwarded_for {
+            "azure-appended-forwarded-client"
+        } else {
+            "socket-peer"
+        },
         "starting Integration Changelog Watch"
     );
 
     let api = Router::new()
-        .route("/health", get(health))
         .route("/api/workspaces", post(create_workspace))
         .route("/api/watches", get(list_watches).post(add_watch))
         .route("/api/watches/import", post(replace_watches))
@@ -252,6 +262,9 @@ async fn main() {
         .layer(middleware::from_fn(api_cache_headers));
 
     let app = Router::new()
+        // Health is intentionally outside the public API limiter so a noisy
+        // client cannot make the platform replace a healthy replica.
+        .route("/health", get(health))
         .merge(api)
         .route("/", get(index))
         .route("/demo", get(index))
@@ -1053,20 +1066,47 @@ async fn fetch_public(value: &str) -> Result<String, String> {
         .send()
         .await
         .map_err(|_| "Could not reach this public feed.".to_owned())?;
-    ensure_feed_response_is_safe(response.status())?;
-    response
-        .text()
-        .await
-        .map_err(|_| "Could not read this feed response.".to_owned())
+    ensure_feed_response_is_safe(response.status(), response.content_length())?;
+    read_bounded_feed(response).await
 }
 
-fn ensure_feed_response_is_safe(status: StatusCode) -> Result<(), String> {
+fn ensure_feed_response_is_safe(
+    status: StatusCode,
+    content_length: Option<u64>,
+) -> Result<(), String> {
     if status.is_redirection() {
         return Err("This feed redirects. Use its final public HTTPS address instead.".to_owned());
     }
     if !status.is_success() {
         return Err("The feed returned an error response.".to_owned());
     }
+    if content_length.is_some_and(|length| length > MAX_HOSTED_FEED_BYTES as u64) {
+        return Err("This feed is larger than the 1 MiB hosted scan limit.".to_owned());
+    }
+    Ok(())
+}
+
+async fn read_bounded_feed(mut response: reqwest::Response) -> Result<String, String> {
+    let initial_capacity = response
+        .content_length()
+        .unwrap_or(0)
+        .min(MAX_HOSTED_FEED_BYTES as u64) as usize;
+    let mut body = Vec::with_capacity(initial_capacity);
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|_| "Could not read this feed response.".to_owned())?
+    {
+        append_feed_chunk(&mut body, &chunk)?;
+    }
+    Ok(String::from_utf8_lossy(&body).into_owned())
+}
+
+fn append_feed_chunk(body: &mut Vec<u8>, chunk: &[u8]) -> Result<(), String> {
+    if body.len().saturating_add(chunk.len()) > MAX_HOSTED_FEED_BYTES {
+        return Err("This feed is larger than the 1 MiB hosted scan limit.".to_owned());
+    }
+    body.extend_from_slice(chunk);
     Ok(())
 }
 
@@ -1126,17 +1166,47 @@ fn internal(_: sqlx::Error) -> ApiError {
     )
 }
 
+/// Azure Container Apps appends the network client as the final
+/// X-Forwarded-For hop. Caller-provided prefixes remain to its left, so only
+/// the rightmost parseable hop can identify a client. Direct deployments use
+/// their socket peer and ignore forwarding headers entirely.
+fn rate_limit_client_ip(
+    headers: &HeaderMap,
+    socket_peer: IpAddr,
+    trust_forwarded_for: bool,
+) -> IpAddr {
+    let peer_is_ingress = match socket_peer {
+        IpAddr::V4(address) => address.is_private() || address.is_loopback(),
+        IpAddr::V6(address) => {
+            address.is_unique_local() || address.is_unicast_link_local() || address.is_loopback()
+        }
+    };
+    if !trust_forwarded_for || !peer_is_ingress {
+        return socket_peer;
+    }
+    headers
+        .get_all("x-forwarded-for")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(','))
+        .map(str::trim)
+        .filter_map(|value| value.parse::<IpAddr>().ok())
+        .next_back()
+        .unwrap_or(socket_peer)
+}
+
 async fn rate_limit(
     State(app): State<App>,
     request: Request<axum::body::Body>,
     next: Next,
 ) -> Response {
-    // Container Apps preserves caller-supplied X-Forwarded-For values but does
-    // not provide this container a verifiable client address. Do not turn a
-    // caller-controlled header (or a rotating ingress socket) into a limiter
-    // identity. The product is deliberately one replica, so one shared public
-    // bucket is a secure, bounded fallback for its anonymous API.
-    let client_ip = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
+    let socket_peer = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|peer| peer.0.ip())
+        // Unit/router calls without connection metadata remain bounded.
+        .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
+    let client_ip = rate_limit_client_ip(request.headers(), socket_peer, app.trust_forwarded_for);
     let now = std::time::Instant::now();
     let retry_after = {
         let mut buckets = app.limiter.lock().expect("rate limiter mutex");
@@ -1398,7 +1468,6 @@ fn cli_ack(path: &str, id: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::ConnectInfo;
     use tower::ServiceExt;
 
     fn bearer(token: &str) -> HeaderMap {
@@ -1447,6 +1516,7 @@ mod tests {
             db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
         assert_eq!(
             list_watches(State(app.clone()), bearer(&second))
@@ -1498,6 +1568,7 @@ mod tests {
             db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
 
         let result = replace_watches(
@@ -1564,6 +1635,7 @@ mod tests {
                 db: db.clone(),
                 build: "test".to_owned(),
                 limiter: Arc::new(Mutex::new(HashMap::new())),
+                trust_forwarded_for: false,
             }),
             bearer(&token),
         )
@@ -1695,7 +1767,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn public_rate_bucket_rejects_spoofed_forwarding_headers_without_growing() {
+    async fn azure_appended_client_hop_ignores_rotating_caller_prefixes() {
         let db = SqlitePoolOptions::new()
             .max_connections(1)
             .connect("sqlite::memory:")
@@ -1705,6 +1777,7 @@ mod tests {
             db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: true,
         };
         let app = Router::new()
             .route("/", get(|| async { "ok" }))
@@ -1743,6 +1816,89 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn clients_have_independent_allowances_and_health_is_never_throttled() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let state = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: true,
+        };
+        let limited_api = Router::new()
+            .route("/api/probe", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(state.clone(), rate_limit));
+        let app = Router::new()
+            .route("/health", get(health))
+            .merge(limited_api)
+            .with_state(state.clone());
+
+        for _ in 0..40 {
+            let mut request = Request::builder()
+                .uri("/api/probe")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            request.headers_mut().insert(
+                "x-forwarded-for",
+                "203.0.113.9, 198.51.100.41".parse().unwrap(),
+            );
+            request
+                .extensions_mut()
+                .insert(ConnectInfo(SocketAddr::from(([10, 0, 0, 12], 4567))));
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::OK
+            );
+        }
+
+        let mut exhausted = Request::builder()
+            .uri("/api/probe")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        exhausted.headers_mut().insert(
+            "x-forwarded-for",
+            "203.0.113.10, 198.51.100.41".parse().unwrap(),
+        );
+        exhausted
+            .extensions_mut()
+            .insert(ConnectInfo(SocketAddr::from(([10, 0, 0, 12], 4567))));
+        let response = app.clone().oneshot(exhausted).await.unwrap();
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "1");
+
+        let mut other_client = Request::builder()
+            .uri("/api/probe")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        other_client.headers_mut().insert(
+            "x-forwarded-for",
+            "203.0.113.10, 198.51.100.42".parse().unwrap(),
+        );
+        other_client
+            .extensions_mut()
+            .insert(ConnectInfo(SocketAddr::from(([10, 0, 0, 12], 4567))));
+        assert_eq!(
+            app.clone().oneshot(other_client).await.unwrap().status(),
+            StatusCode::OK
+        );
+
+        for _ in 0..80 {
+            let request = Request::builder()
+                .uri("/health")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::OK
+            );
+        }
+        assert_eq!(state.limiter.lock().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
     async fn direct_peer_ignores_caller_supplied_forwarding_headers() {
         let db = SqlitePoolOptions::new()
             .max_connections(1)
@@ -1753,6 +1909,7 @@ mod tests {
             db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
         let app = Router::new()
             .route("/", get(|| async { "ok" }))
@@ -1794,9 +1951,10 @@ mod tests {
             db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
         let stale: IpAddr = "198.51.100.41".parse().unwrap();
-        let active = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
+        let active: IpAddr = "198.51.100.42".parse().unwrap();
         state.limiter.lock().unwrap().insert(
             stale,
             RateBucket {
@@ -1901,11 +2059,13 @@ mod tests {
             db: first_db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
         let second = App {
             db: second_db,
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
         assert!(workspace_id(&bearer(&token), &first).await.is_ok());
         assert!(matches!(
@@ -1924,6 +2084,7 @@ mod tests {
                 .unwrap(),
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: true,
         };
         let second = App {
             db: SqlitePoolOptions::new()
@@ -1933,6 +2094,7 @@ mod tests {
                 .unwrap(),
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: true,
         };
         let first_router = Router::new()
             .route("/", get(|| async { "ok" }))
@@ -1999,6 +2161,7 @@ mod tests {
                 .unwrap(),
             build: "test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: true,
         };
         assert!(workspace_id(&bearer(&token), &restarted).await.is_ok());
         let router = Router::new()
@@ -2045,6 +2208,7 @@ mod tests {
             db,
             build: "shutdown-test".to_owned(),
             limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
         };
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
@@ -2086,14 +2250,32 @@ mod tests {
     #[test]
     fn claim_redirecting_feeds_are_rejected() {
         assert_eq!(
-            ensure_feed_response_is_safe(StatusCode::TEMPORARY_REDIRECT),
+            ensure_feed_response_is_safe(StatusCode::TEMPORARY_REDIRECT, None),
             Err("This feed redirects. Use its final public HTTPS address instead.".to_owned())
         );
         assert_eq!(
-            ensure_feed_response_is_safe(StatusCode::BAD_GATEWAY),
+            ensure_feed_response_is_safe(StatusCode::BAD_GATEWAY, None),
             Err("The feed returned an error response.".to_owned())
         );
-        assert_eq!(ensure_feed_response_is_safe(StatusCode::OK), Ok(()));
+        assert_eq!(
+            ensure_feed_response_is_safe(StatusCode::OK, Some(MAX_HOSTED_FEED_BYTES as u64)),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn hosted_feed_limit_rejects_declared_and_streamed_oversize_before_buffering() {
+        let oversized = "This feed is larger than the 1 MiB hosted scan limit.".to_owned();
+        assert_eq!(
+            ensure_feed_response_is_safe(StatusCode::OK, Some(MAX_HOSTED_FEED_BYTES as u64 + 1),),
+            Err(oversized.clone())
+        );
+
+        let mut body = Vec::new();
+        append_feed_chunk(&mut body, &vec![b'x'; MAX_HOSTED_FEED_BYTES]).unwrap();
+        assert_eq!(body.len(), MAX_HOSTED_FEED_BYTES);
+        assert_eq!(append_feed_chunk(&mut body, b"x"), Err(oversized));
+        assert_eq!(body.len(), MAX_HOSTED_FEED_BYTES);
     }
 
     #[tokio::test]
