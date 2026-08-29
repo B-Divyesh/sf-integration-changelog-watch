@@ -213,7 +213,13 @@ async fn main() {
     setup(&db).await.expect("schema");
     let state = App {
         db,
-        build: env::var("BUILD_SHA").unwrap_or_else(|_| "dev".to_owned()),
+        build: env::var("BUILD_SHA")
+            .ok()
+            .filter(|value| value != "dev")
+            .or_else(|| std::fs::read_to_string("/app/build-sha").ok())
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "dev".to_owned()),
         limiter: Arc::new(Mutex::new(HashMap::new())),
     };
     info!(

@@ -10,6 +10,8 @@ describe('container build contract', () => {
     expect(dockerfile).toContain('RUN npm ci --ignore-scripts && npm run build')
     expect(dockerfile).toContain('COPY Cargo.toml Cargo.lock ./')
     expect(dockerfile).toContain('RUN cargo build --release --locked')
+    expect(dockerfile).toContain('RUN printf \'%s\' "$BUILD_SHA" > /build-sha')
+    expect(dockerfile).toContain('COPY --from=build /build-sha /app/build-sha')
   })
 
   it('ships a repair deployment that cannot restore the generic multi-replica topology', () => {

@@ -13,12 +13,14 @@ COPY src ./src
 # Use the current stable Rust toolchain: the lockfile includes ICU crates
 # whose published MSRV advances with stable Rust.
 RUN cargo build --release --locked
+RUN printf '%s' "$BUILD_SHA" > /build-sha
 
 FROM alpine:3.21
 ARG BUILD_SHA=dev
 RUN addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
 WORKDIR /app
 COPY --from=build /app/target/release/integration-changelog-watch /app/server
+COPY --from=build /build-sha /app/build-sha
 COPY --from=web /app/dist /app/dist
 ENV BUILD_SHA=$BUILD_SHA
 USER app
