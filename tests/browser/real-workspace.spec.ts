@@ -72,6 +72,7 @@ test('@claim:hosted-watch-limit saves three watches and explains the fourth-watc
 
 test('@claim:keyword-edit saves edited keywords and restores them after reload', async ({ page }) => {
   await page.goto('/')
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
   const watchId = await page.evaluate(async () => {
     const token = localStorage.getItem('icw:workspace-token')!
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.32' }
