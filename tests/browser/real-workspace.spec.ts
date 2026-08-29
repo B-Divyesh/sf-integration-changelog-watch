@@ -70,6 +70,37 @@ test('@claim:hosted-watch-limit saves three watches and explains the fourth-watc
   expect(result[3].text).toContain('already has three watches')
 })
 
+test('@claim:watch-file-rejection-preserves-watches keeps a real workspace unchanged when server validation rejects an import', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  await page.evaluate(async () => {
+    const token = localStorage.getItem('icw:workspace-token')!
+    const response = await fetch('/api/watches', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.34' },
+      body: JSON.stringify({ vendor: 'Keep me', url: 'https://1.1.1.1/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 1.0', command: 'npm test' }),
+    })
+    if (!response.ok) throw new Error(await response.text())
+  })
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Edit Keep me' })).toBeVisible()
+  await page.locator('#watch-file').setInputFiles({
+    name: 'rejected-watch.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ watches: [{ vendor: 'Blocked import', url: 'http://127.0.0.1/private', keywords: 'webhook', owner: 'Nora', version: 'sdk 2.0', command: 'npm test' }] })),
+  })
+  await expect(page.getByRole('heading', { name: 'Review 1 imported watch' })).toBeVisible()
+  await page.getByRole('button', { name: 'Import 1 watch' }).click()
+  await expect(page.locator('#notice')).toContainText('The watch file was not imported.')
+  const stored = await page.evaluate(async () => {
+    const token = localStorage.getItem('icw:workspace-token')!
+    return fetch('/api/watches', { headers: { authorization: `Bearer ${token}`, 'x-forwarded-for': '198.51.100.34' } })
+      .then(response => response.json()) as Promise<Array<{ vendor: string }>>
+  })
+  expect(stored.map(watch => watch.vendor)).toEqual(['Keep me'])
+  await expect(page.getByRole('button', { name: 'Edit Keep me' })).toBeVisible()
+})
+
 test('@claim:keyword-edit saves edited keywords and restores them after reload', async ({ page }) => {
   await page.goto('/')
   await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
@@ -98,13 +129,14 @@ test('@claim:api-contract covers the documented API methods, workspace boundary,
     const created = await fetch('/api/watches', { method: 'POST', headers, body: JSON.stringify(watch) }).then(async response => ({ status: response.status, body: await response.json() as { id: number } }))
     const watches = await fetch('/api/watches', { headers })
     const updated = await fetch(`/api/watches/${created.body.id}`, { method: 'PUT', headers, body: JSON.stringify({ ...watch, keywords: 'deprecation' }) })
+    const imported = await fetch('/api/watches/import', { method: 'POST', headers, body: JSON.stringify({ watches: [{ ...watch, vendor: 'Imported contract fixture' }] }) })
     const actions = await fetch('/api/actions', { headers })
     const missingAction = await fetch('/api/actions/999999', { method: 'POST', headers, body: JSON.stringify({ acknowledged: true }) })
     const deleted = await fetch(`/api/watches/${created.body.id}`, { method: 'DELETE', headers })
     const scan = await fetch('/api/scan', { method: 'POST', headers })
-    return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
+    return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, imported: imported.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
   })
-  expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, actions: 200, missingAction: 404, deleted: 204, scan: 200 })
+  expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, imported: 200, actions: 200, missingAction: 404, deleted: 204, scan: 200 })
 })
 
 test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }, testInfo) => {

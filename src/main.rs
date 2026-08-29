@@ -64,6 +64,11 @@ struct NewWatch {
     command: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct WatchImport {
+    watches: Vec<NewWatch>,
+}
+
 #[derive(Debug, Serialize, FromRow)]
 struct Action {
     id: i64,
@@ -235,6 +240,7 @@ async fn main() {
         .route("/health", get(health))
         .route("/api/workspaces", post(create_workspace))
         .route("/api/watches", get(list_watches).post(add_watch))
+        .route("/api/watches/import", post(replace_watches))
         .route("/api/watches/:id", put(update_watch).delete(delete_watch))
         .route("/api/actions", get(list_actions))
         .route("/api/actions/:id", post(ack_action))
@@ -586,6 +592,57 @@ async fn add_watch(
     validate_watch(&new).await?;
     let watch = insert_watch_under_limit(&app.db, workspace, &new).await?;
     Ok((StatusCode::CREATED, Json(watch)))
+}
+
+/// Replacing watches is intentionally one server-side operation. The browser
+/// cannot fully validate a public address because DNS and private-network
+/// policy are server concerns; checking the complete file before beginning a
+/// transaction means a rejected import cannot erase a working dashboard.
+async fn replace_watches(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Json(import): Json<WatchImport>,
+) -> ApiResult<Json<Vec<Watch>>> {
+    let workspace = workspace_id(&headers, &app).await?;
+    validate_watch_import(&import.watches).await?;
+
+    let mut transaction = app.db.begin().await.map_err(internal)?;
+    sqlx::query("DELETE FROM workspace_actions WHERE workspace_id=?")
+        .bind(workspace)
+        .execute(&mut *transaction)
+        .await
+        .map_err(internal)?;
+    sqlx::query("DELETE FROM workspace_watches WHERE workspace_id=?")
+        .bind(workspace)
+        .execute(&mut *transaction)
+        .await
+        .map_err(internal)?;
+
+    let mut saved = Vec::with_capacity(import.watches.len());
+    for watch in &import.watches {
+        let inserted = sqlx::query(
+            "INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command) VALUES(?,?,?,?,?,?,?)",
+        )
+        .bind(workspace)
+        .bind(&watch.vendor)
+        .bind(&watch.url)
+        .bind(&watch.keywords)
+        .bind(&watch.owner)
+        .bind(&watch.version)
+        .bind(&watch.command)
+        .execute(&mut *transaction)
+        .await
+        .map_err(internal)?;
+        let saved_watch = sqlx::query_as::<_, Watch>("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
+            .bind(inserted.last_insert_rowid())
+            .bind(workspace)
+            .fetch_one(&mut *transaction)
+            .await
+            .map_err(internal)?;
+        saved.push(saved_watch);
+    }
+    transaction.commit().await.map_err(internal)?;
+    Ok(Json(saved))
 }
 
 /// The quota condition lives in the INSERT statement, rather than in a prior
@@ -962,6 +1019,19 @@ async fn validate_watch(watch: &NewWatch) -> ApiResult<()> {
         .await
         .map(|_| ())
         .map_err(|message| ApiError(StatusCode::BAD_REQUEST, message))
+}
+
+async fn validate_watch_import(watches: &[NewWatch]) -> ApiResult<()> {
+    if watches.is_empty() || watches.len() > 3 {
+        return Err(ApiError(
+            StatusCode::BAD_REQUEST,
+            "Import one to three watches into the hosted workspace.".to_owned(),
+        ));
+    }
+    for watch in watches {
+        validate_watch(watch).await?;
+    }
+    Ok(())
 }
 
 async fn fetch_public(value: &str) -> Result<String, String> {
@@ -1393,6 +1463,63 @@ mod tests {
         assert_eq!(json["seenAt"], "Today");
         assert_eq!(json["version"], "");
         assert!(json.get("source_url").is_none());
+    }
+
+    #[tokio::test]
+    async fn rejected_watch_import_preserves_existing_workspace_watches() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        let token = "i".repeat(64);
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash(&token))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command) VALUES(?,?,?,?,?,?,?)")
+            .bind(workspace)
+            .bind("Keep me")
+            .bind("https://1.1.1.1/feed")
+            .bind("webhook")
+            .bind("Maya")
+            .bind("sdk 1.0")
+            .bind("npm test")
+            .execute(&db)
+            .await
+            .unwrap();
+        let app = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+
+        let result = replace_watches(
+            State(app.clone()),
+            bearer(&token),
+            Json(WatchImport {
+                watches: vec![NewWatch {
+                    vendor: "Blocked import".to_owned(),
+                    url: "http://127.0.0.1/private".to_owned(),
+                    keywords: "webhook".to_owned(),
+                    owner: "Nora".to_owned(),
+                    version: "sdk 2.0".to_owned(),
+                    command: "npm test".to_owned(),
+                }],
+            }),
+        )
+        .await;
+        assert!(matches!(result, Err(ApiError(StatusCode::BAD_REQUEST, _))));
+        let watches = list_watches(State(app), bearer(&token)).await.unwrap().0;
+        assert_eq!(watches.len(), 1);
+        assert_eq!(watches[0].vendor, "Keep me");
     }
 
     #[test]

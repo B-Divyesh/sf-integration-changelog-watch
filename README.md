@@ -27,6 +27,7 @@ The container exposes health, workspace, watch, action, and scan endpoints. Crea
 | `GET` | `/health` | Service and build identity |
 | `POST` | `/api/workspaces` | A new browser-held workspace token |
 | `GET`, `POST` | `/api/watches` | Read or create workspace watches |
+| `POST` | `/api/watches/import` | Validate and replace one to three workspace watches atomically |
 | `PUT`, `DELETE` | `/api/watches/:id` | Update or remove one workspace watch |
 | `GET` | `/api/actions` | Read assigned action cards |
 | `POST` | `/api/actions/:id` | Acknowledge one action card |
@@ -34,7 +35,7 @@ The container exposes health, workspace, watch, action, and scan endpoints. Crea
 
 ## Watch files
 
-Use **Export watch file** to download your watches in the CLI JSON schema. Use **Import watch file** to preview one to three watches before replacing the current dashboard watches. Demo imports stay in demo storage.
+Use **Export watch file** to download your watches in the CLI JSON schema. Use **Import watch file** to preview one to three watches. A rejected private-workspace import leaves the current watches unchanged. Demo imports stay in demo storage.
 
 ## CLI demo
 

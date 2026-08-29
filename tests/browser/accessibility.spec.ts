@@ -16,6 +16,22 @@ test('demo has no accessibility violations', async ({ page }) => {
   expect(consoleErrors).toEqual([])
 })
 
+test('demo uses a complete heading outline and browser Back restores focus to the new route heading', async ({ page }) => {
+  await page.goto('/demo')
+  const headings = await page.locator('h1, h2, h3').evaluateAll(elements => elements.map(element => Number(element.tagName.slice(1))))
+  expect(headings[0]).toBe(1)
+  expect(headings.every((level, index) => index === 0 || level <= headings[index - 1] + 1)).toBe(true)
+  await expect(page.getByRole('heading', { level: 2, name: 'Action cards' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Watched feeds' })).toBeVisible()
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Demo' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Sample action cards' })).toBeFocused()
+  await page.goBack()
+  await expect(page).toHaveURL('/')
+  await expect.poll(() => page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent }))).toEqual({ tag: 'H1', text: 'Turn vendor changes into assigned action cards' })
+})
+
 test('every app route supplies route-specific titles, descriptions, previews, and canonicals', async ({ page }) => {
   const expected = [
     ['/', 'Integration Changelog Watch — Assign vendor changes', 'Turn vendor release notes into assigned action cards with an owner, version, and local check.', '/'],

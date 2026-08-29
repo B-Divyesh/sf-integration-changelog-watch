@@ -22,6 +22,7 @@ All visitor-facing landing sentences are below 22 words. No banned marketing ter
 | Footer | 6 | Vendor notices become assigned action cards. | Pass |
 | Demo banner | 6 | Demo — sample data, nothing is saved | Tested: `demo-local` |
 | Demo banner note | 3 | Discards this demo. | Tested: `demo-isolation-transitions` |
+| Watch-file preview | 8 | A rejected import leaves your current watches unchanged. | Tested: `watch-file-rejection-preserves-watches` |
 
 ## Terminology
 

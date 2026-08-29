@@ -59,7 +59,7 @@ async function api(path: string, init: RequestInit = {}) {
   return fetch(path, { ...init, headers })
 }
 
-async function hydrateReal() {
+async function hydrateReal(restoreRouteFocus = false) {
   if (demo) return
   try {
     const [watchResponse, actionResponse] = await Promise.all([api('/api/watches'), api('/api/actions')])
@@ -71,6 +71,7 @@ async function hydrateReal() {
     actions = await actionResponse.json() as Action[]
     localStorage.setItem(realKey, JSON.stringify({ watches, actions }))
     render()
+    if (restoreRouteFocus) document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
   } catch {
     if (demo) return
     statusMessage = 'Your private workspace could not load. Check your connection, then reload.'
@@ -88,9 +89,10 @@ function dashboard(isDemoBoard = false) {
   const pending = actions.filter(action => !action.acknowledged)
   const heading = pending.length ? `${pending.length} action${pending.length === 1 ? ' needs' : 's need'} acknowledgement` : 'No actions need acknowledgement'
   const headingMarkup = isDemoBoard ? `<h1 id="action-heading" tabindex="-1">Sample action cards</h1><p class="demo-summary">${heading}. These are safe sample records.</p>` : `<p class="eyebrow">Assigned action cards</p><h2 id="action-heading">${heading}</h2>`
-  const preview = importPreview ? `<section class="import-preview" aria-labelledby="import-heading"><h3 id="import-heading">Review ${importPreview.length} imported watch${importPreview.length === 1 ? '' : 'es'}</h3><p>These replace the current watches and their action cards.</p><ul>${importPreview.map(watch => `<li><strong>${escape(watch.vendor)}</strong> — ${escape(watch.keywords)} → ${escape(watch.owner)}</li>`).join('')}</ul><button id="confirm-import" class="primary">Import ${importPreview.length} watch${importPreview.length === 1 ? '' : 'es'}</button><button id="cancel-import" class="text-button">Cancel import</button></section>` : ''
-  const actionSection = `<section class="action-column" aria-labelledby="cards-heading"><h3 id="cards-heading">Action cards</h3><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Matched release notes appear here after you scan a feed.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section>`
-  const watchesPanel = `<section class="watches" aria-labelledby="watches-heading"><div class="side-title"><h3 id="watches-heading">Watched feeds</h3><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>Affected dependency: ${escape(watch.version.trim() || 'Not recorded')}</small><small>Keywords: ${escape(watch.keywords)}</small><span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<div class="watch-file-actions"><button id="export-watches" class="text-button" ${watches.length ? '' : 'disabled'}>Export watch file</button><button id="import-watches" class="text-button">Import watch file</button><input id="watch-file" type="file" accept="application/json,.json" hidden></div><button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></section>`
+  const sectionHeading = isDemoBoard ? 'h2' : 'h3'
+  const preview = importPreview ? `<section class="import-preview" aria-labelledby="import-heading"><${sectionHeading} id="import-heading">Review ${importPreview.length} imported watch${importPreview.length === 1 ? '' : 'es'}</${sectionHeading}><p>A rejected import leaves your current watches unchanged.</p><ul>${importPreview.map(watch => `<li><strong>${escape(watch.vendor)}</strong> — ${escape(watch.keywords)} → ${escape(watch.owner)}</li>`).join('')}</ul><button id="confirm-import" class="primary">Import ${importPreview.length} watch${importPreview.length === 1 ? '' : 'es'}</button><button id="cancel-import" class="text-button">Cancel import</button></section>` : ''
+  const actionSection = `<section class="action-column" aria-labelledby="cards-heading"><${sectionHeading} id="cards-heading">Action cards</${sectionHeading}><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Matched release notes appear here after you scan a feed.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section>`
+  const watchesPanel = `<section class="watches" aria-labelledby="watches-heading"><div class="side-title"><${sectionHeading} id="watches-heading">Watched feeds</${sectionHeading}><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>Affected dependency: ${escape(watch.version.trim() || 'Not recorded')}</small><small>Keywords: ${escape(watch.keywords)}</small><span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<div class="watch-file-actions"><button id="export-watches" class="text-button" ${watches.length ? '' : 'disabled'}>Export watch file</button><button id="import-watches" class="text-button">Import watch file</button><input id="watch-file" type="file" accept="application/json,.json" hidden></div><button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></section>`
   if (isDemoBoard) return `<section class="dashboard demo-dashboard" aria-labelledby="action-heading"><div class="demo-head">${headingMarkup}</div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p>${preview}${actionSection}<div class="dash-buttons demo-controls"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div>${watchesPanel}</section>`
   return `<section class="dashboard" aria-labelledby="action-heading"><div class="dash-head"><div>${headingMarkup}</div><div class="dash-buttons"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div></div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p>${preview}<div class="dash-grid">${actionSection}${watchesPanel}</div></section>`
 }
@@ -136,7 +138,7 @@ function route(path: string, moveFocus = false) {
   render()
   // Legal pages are informational routes. They must not create a workspace or
   // make dashboard API requests merely because someone reads their terms.
-  if (!demo && active === 'home') void hydrateReal()
+  if (!demo && active === 'home') void hydrateReal(moveFocus)
   if (moveFocus) document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
 }
 
@@ -251,19 +253,14 @@ async function importWatches() {
     return
   }
   try {
-    for (const watch of watches) {
-      const response = await api(`/api/watches/${watch.id}`, { method: 'DELETE' })
-      if (!response.ok) throw new Error(await response.text())
-    }
-    for (const watch of incoming) {
-      const response = await api('/api/watches', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(watch) })
-      if (!response.ok) throw new Error(await response.text())
-    }
+    const response = await api('/api/watches/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watches: incoming }) })
+    if (!response.ok) throw new Error(await response.text())
     importPreview = undefined
     statusMessage = `Imported ${incoming.length} watch${incoming.length === 1 ? '' : 'es'}. Scan when you are ready.`
     await hydrateReal()
   } catch (error) {
-    statusMessage = `The watch file was not imported. ${error instanceof Error ? error.message : 'Try another file.'}`
+    importPreview = undefined
+    statusMessage = `The watch file was not imported. Existing watches are unchanged. ${error instanceof Error ? error.message : 'Try another file.'}`
     render()
   }
 }
