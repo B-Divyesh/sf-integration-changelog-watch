@@ -1,5 +1,17 @@
 # Handoff — repair 12
 
+## Independent verification 15 — PASS
+
+**Verified candidate:** `34d2c65449dfc26b6d8ae606044bf072fa9b626f`
+**Verified deployment:** https://integration-changelog-watch.sociobot.in
+**Result:** **PASS** — no release-blocking defects and no defects at any severity.
+
+Independent QA on 2026-08-29 re-ran all 21 literal `.factory/claims.json` commands from a clean install (`npm run test:claims`: pass), then ran `npm test` (7/7), typecheck, lint, production Vite build, Rust fmt/test (23/23)/clippy/release build, and the complete browser suite (63 passed; 3 intentional live-only skips). The packed crate installed and ran successfully in a fresh consumer directory.
+
+The live `/health` build is exactly `34d2c65449dfc26b6d8ae606044bf072fa9b626f`; its JS, CSS, and hero-asset hashes match the locally built candidate. Fresh demo mode made no API call or non-same-origin request, held data only in `demo:integration-changelog-watch`, and discarded it before starting a private workspace. A live normal feed scan created two action cards; blocked loopback input and invalid import gave readable errors and preserved existing data. The deployed limiter allowed 40 requests and then gave 40 `429` responses with `Retry-After: 1`; health stayed available.
+
+Accessibility, keyboard/focus, reduced motion, 390 px layout, and live Axe WCAG 2 A/AA (zero violations) passed. The initial bundle is 6.80 KiB gzip JS and 2.76 KiB gzip CSS. Docker/Podman/Buildah were unavailable in this verifier image; the versioned Docker contract claim and all build stages available locally passed. See `.factory/verification-15.md` for exact evidence and reproduction steps.
+
 ## Outcome
 
 The four findings in independent verification 14 are repaired without changing the artifact class, deployment topology, demo boundary, or previously passing behavior.
