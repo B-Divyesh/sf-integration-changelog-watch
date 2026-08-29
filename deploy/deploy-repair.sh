@@ -48,7 +48,7 @@ az rest --method put \
       "terminationGracePeriodSeconds":30,
       "containers":[{
         "name":"app","image":"sociobotregistry.azurecr.io/$tag",
-        "resources":{"cpu":0.5,"memory":"1Gi"},"env":[{"name":"PORT","value":"8080"}],
+        "resources":{"cpu":0.5,"memory":"1Gi"},"env":[{"name":"PORT","value":"8080"},{"name":"BUILD_SHA","value":"$sha"}],
         "volumeMounts":[{"volumeName":"workspace-data","mountPath":"/data"}]
       }],
       "scale":{"minReplicas":1,"maxReplicas":1},

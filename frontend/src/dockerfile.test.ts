@@ -21,6 +21,7 @@ describe('container build contract', () => {
     expect(deploy).toContain('"storageType":"AzureFile"')
     expect(deploy).toContain('"mountPath":"/data"')
     expect(deploy).toContain('terminationGracePeriodSeconds')
+    expect(deploy).toContain('"name":"BUILD_SHA","value":"$sha"')
     expect(readFileSync(new URL('../../src/main.rs', import.meta.url), 'utf8')).toContain('reconcile_production_topology')
   })
 
