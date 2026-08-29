@@ -2,7 +2,7 @@
 
 Turn vendor changelog changes into owned integration actions. It is for engineers who maintain payment, auth, analytics, or messaging integrations.
 
-Add a public changelog or RSS feed, matching words, an owner, and a local check command. Scan when you want to review notices and turn matches into action cards. It does not access private portals or claim to detect undocumented changes.
+Add a public changelog or RSS feed, matching words, an owner, and a local check command. Scan when you want to review notices and turn matches into action cards.
 
 ## Run locally
 
@@ -34,7 +34,7 @@ cargo run -- ack --config examples/watches.json --id <action-id>
 
 ## Deploy
 
-Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`) and persists its SQLite database at `/data/changelog-watch.db` when that directory is mounted.
+Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`). The shipped Container App configuration uses one replica and mounts durable Azure Files at `/data`, where SQLite persists at `/data/changelog-watch.db`.
 
 See `/privacy` and `/terms` for data handling and source rules.
 

@@ -12,7 +12,7 @@ Landing sentences (word counts):
 - “Paste a changelog or RSS address you are allowed to read.” — 11
 - “Use rules like ‘webhook’, ‘deprecation’, or an API version.” — 9
 - “Each matching notice gets an owner and a check command.” — 10
-- “It does not read private portals, alter code, or detect undocumented changes.” — 12
+- “It does not scan automatically.” — 5
 - “Private, loopback, and link-local addresses are blocked.” — 7
 
 No sentence exceeds 22 words. No banned terms occur.

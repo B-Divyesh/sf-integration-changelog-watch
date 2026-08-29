@@ -60,3 +60,11 @@ test('missing routes return the product-styled 404 screen', async ({ page }) => 
   await expect(page.getByRole('link', { name: 'Return home' })).toBeVisible()
   await expect(page.locator('link[href="/404.css"]')).toHaveCount(1)
 })
+
+test('SPA and 404 footers use the same runtime build identity as health', async ({ page }) => {
+  const build = await page.request.get('/health').then(response => response.json()).then((body: { build: string }) => body.build)
+  await page.goto('/demo')
+  await expect(page.locator('footer')).toContainText(`build ${build}`)
+  await page.goto('/missing-build-identity')
+  await expect(page.locator('footer')).toContainText(`build ${build}`)
+})

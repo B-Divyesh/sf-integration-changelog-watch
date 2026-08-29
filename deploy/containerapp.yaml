@@ -1,0 +1,21 @@
+# Production topology for Integration Changelog Watch.
+#
+# SQLite and the per-client rate bucket deliberately use one process. Apply
+# this template to the factory Container App together with the image built
+# from this repository. The Azure Files storage is registered on factory-env
+# as integration-changelog-watch-data and is mounted at /data.
+properties:
+  template:
+    terminationGracePeriodSeconds: 30
+    scale:
+      minReplicas: 1
+      maxReplicas: 1
+    volumes:
+      - name: workspace-data
+        storageType: AzureFile
+        storageName: integration-changelog-watch-data
+    containers:
+      - name: app
+        volumeMounts:
+          - volumeName: workspace-data
+            mountPath: /data

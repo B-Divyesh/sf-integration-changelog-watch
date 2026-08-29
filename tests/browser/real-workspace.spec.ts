@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -162,5 +162,37 @@ test('@claim:cli-demo-local CLI demo prints shipped cards without using a config
     expect(proxyConnections).toBe(0)
   } finally {
     await new Promise<void>(resolve => proxy.close(() => resolve()))
+  }
+})
+
+test('@claim:cli-shipped-mapping-local the shipped CLI scan mapping reads its bundled feed without network access', async () => {
+  let proxyConnections = 0
+  const proxy = createServer(socket => {
+    proxyConnections += 1
+    socket.destroy()
+  })
+  await new Promise<void>((resolve, reject) => {
+    proxy.once('error', reject)
+    proxy.listen(0, '127.0.0.1', () => resolve())
+  })
+  const address = proxy.address()
+  if (!address || typeof address === 'string') throw new Error('Test proxy did not bind a TCP port.')
+  const directory = await mkdtemp(join(tmpdir(), 'icw-shipped-cli-'))
+  try {
+    const examples = join(directory, 'examples')
+    await mkdir(examples)
+    await writeFile(join(examples, 'watches.json'), await readFile(join(process.cwd(), 'examples/watches.json')))
+    await writeFile(join(examples, 'sample-feed.xml'), await readFile(join(process.cwd(), 'examples/sample-feed.xml')))
+    const proxyUrl = `http://127.0.0.1:${address.port}`
+    const { stdout } = await execFileAsync('cargo', ['run', '--quiet', '--', 'scan', '--config', join(examples, 'watches.json')], {
+      cwd: process.cwd(),
+      env: { ...process.env, HTTP_PROXY: proxyUrl, HTTPS_PROXY: proxyUrl, ALL_PROXY: proxyUrl, NO_PROXY: '' },
+    })
+    expect(stdout).toContain('Created')
+    expect(proxyConnections).toBe(0)
+    await expect(readFile(join(examples, '.integration-changelog-watch/state.json'), 'utf8')).resolves.toContain('acknowledged')
+  } finally {
+    await new Promise<void>(resolve => proxy.close(() => resolve()))
+    await rm(directory, { recursive: true, force: true })
   }
 })

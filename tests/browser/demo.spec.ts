@@ -50,3 +50,20 @@ test('@claim:demo-local demo stays same-origin and does not write real workspace
   expect(await page.evaluate(() => localStorage.getItem('icw:workspace'))).toBeNull()
   expect(await page.evaluate(() => localStorage.getItem('demo:integration-changelog-watch'))).not.toBeNull()
 })
+
+test('@claim:demo-isolation-transitions demo makes no API call, resets its sample, and discards it before real work starts', async ({ page }) => {
+  const apiRequests: string[] = []
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url())
+  })
+  await page.goto('/demo')
+  await page.getByRole('button', { name: 'Acknowledge action' }).click()
+  await expect(page.getByText('No actions need an owner')).toBeVisible()
+  await page.getByRole('button', { name: 'Reset demo' }).click()
+  await expect(page.getByRole('heading', { name: /action needs an owner/i })).toBeVisible()
+  expect(apiRequests).toEqual([])
+  await page.getByRole('button', { name: 'Start for real' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  expect(await page.evaluate(() => localStorage.getItem('demo:integration-changelog-watch'))).toBeNull()
+})

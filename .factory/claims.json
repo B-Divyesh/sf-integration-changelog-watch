@@ -61,5 +61,33 @@
     "where": "README deployment section",
     "test": "cargo test --locked default_database_survives_restart_when_data_is_mounted",
     "sandbox": "temporary SQLite file configured at a mounted-data equivalent path; write a workspace, reconnect, and read it"
+  },
+  {
+    "id": "demo-isolation-transitions",
+    "claim": "The demo makes no API call, resets its sample, and discards it before a real workspace starts.",
+    "where": ".factory/demo.md and demo banner",
+    "test": "npm run build && npm run test:browser -- --grep @claim:demo-isolation-transitions",
+    "sandbox": "fresh browser demo; acknowledge a sample, reset it, then start for real while recording requests and storage"
+  },
+  {
+    "id": "cli-shipped-mapping-local",
+    "claim": "The shipped CLI scan mapping runs from its bundled feed without a network request.",
+    "where": "README CLI section",
+    "test": "npm run build && npm run test:browser -- --grep @claim:cli-shipped-mapping-local",
+    "sandbox": "run the shipped examples/watches.json with all HTTP proxies pointed at a recording proxy"
+  },
+  {
+    "id": "port-only-startup",
+    "claim": "The container starts with only PORT required.",
+    "where": "README deployment section",
+    "test": "cargo test --locked claim_port_only_startup_configuration",
+    "sandbox": "runtime configuration defaults PORT to 8080 and the durable database path to /data without requiring another environment variable"
+  },
+  {
+    "id": "single-replica-durable-data",
+    "claim": "The shipped Container App configuration keeps workspace state and rate limits in one durable replica.",
+    "where": "README deployment section",
+    "test": "cargo test --locked claim_single_replica_durable_topology",
+    "sandbox": "inspect the versioned deployment template for a one-replica scale bound and Azure Files /data mount"
   }
 ]

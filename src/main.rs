@@ -21,7 +21,7 @@ use std::{
     time::Duration,
 };
 use tower_http::services::{ServeDir, ServeFile};
-use tracing::info;
+use tracing::{info, warn};
 use url::Url;
 use uuid::Uuid;
 
@@ -229,15 +229,14 @@ async fn main() {
         .route("/api/actions/:id", post(ack_action))
         .route("/api/scan", post(scan))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
-        .layer(middleware::from_fn(api_cache_headers))
-        .with_state(state);
+        .layer(middleware::from_fn(api_cache_headers));
 
     let app = Router::new()
         .merge(api)
-        .route_service("/", ServeFile::new("dist/index.html"))
-        .route_service("/demo", ServeFile::new("dist/index.html"))
-        .route_service("/privacy", ServeFile::new("dist/index.html"))
-        .route_service("/terms", ServeFile::new("dist/index.html"))
+        .route("/", get(index))
+        .route("/demo", get(index))
+        .route("/privacy", get(index))
+        .route("/terms", get(index))
         .nest_service("/assets", ServeDir::new("dist/assets"))
         .route_service(
             "/paper-cut-hero.webp",
@@ -253,25 +252,55 @@ async fn main() {
         .route_service("/sitemap.xml", ServeFile::new("dist/sitemap.xml"))
         .route_service("/404.css", ServeFile::new("dist/404.css"))
         .fallback(not_found)
-        .layer(middleware::from_fn(site_headers));
-    let port = env::var("PORT")
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(8080);
+        .layer(middleware::from_fn(site_headers))
+        .with_state(state);
+    let port = server_port(env::var("PORT").ok());
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
         .expect("bind PORT");
     info!(port, "listening");
-    axum::serve(
+    if let Err(error) = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
+    .with_graceful_shutdown(shutdown_signal())
     .await
-    .expect("serve");
+    {
+        warn!(%error, "server stopped unexpectedly");
+    } else {
+        info!("server stopped gracefully");
+    }
+}
+
+/// Finish active requests before a Container App revision replacement. Both
+/// signals are handled because local development and the production runtime
+/// use different process supervisors.
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        let mut terminate =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("install SIGTERM handler");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => info!("SIGINT received; draining server"),
+            _ = terminate.recv() => info!("SIGTERM received; draining server"),
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("install Ctrl+C handler");
+        info!("SIGINT received; draining server");
+    }
 }
 
 fn default_database_url() -> String {
     "sqlite:/data/changelog-watch.db?mode=rwc".to_owned()
+}
+
+fn server_port(value: Option<String>) -> u16 {
+    value.and_then(|value| value.parse().ok()).unwrap_or(8080)
 }
 
 async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -289,6 +318,11 @@ async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
 
 async fn health(State(app): State<App>) -> impl IntoResponse {
     Json(serde_json::json!({"ok": true, "build": app.build}))
+}
+
+async fn index(State(app): State<App>) -> impl IntoResponse {
+    let page = rendered_file("dist/index.html", &app.build, "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Integration Changelog Watch</title></head><body><main id=\"main\"><h1>Integration Changelog Watch</h1></main></body></html>");
+    ([(header::CONTENT_TYPE, "text/html; charset=utf-8")], page)
 }
 
 async fn create_workspace(State(app): State<App>) -> ApiResult<(StatusCode, Json<Workspace>)> {
@@ -893,13 +927,27 @@ async fn site_headers(request: Request<axum::body::Body>, next: Next) -> Respons
     response
 }
 
-async fn not_found() -> impl IntoResponse {
-    let page = std::fs::read_to_string("dist/404.html").unwrap_or_else(|_| "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Page not found — Integration Changelog Watch</title></head><body><main id=\"main\"><h1>That page is not here</h1><p><a href=\"/\">Return home</a></p></main></body></html>".to_owned());
+async fn not_found(State(app): State<App>) -> impl IntoResponse {
+    let page = rendered_file("dist/404.html", &app.build, "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Page not found — Integration Changelog Watch</title></head><body><main id=\"main\"><h1>That page is not here</h1><p><a href=\"/\">Return home</a></p></main></body></html>");
     (
         StatusCode::NOT_FOUND,
         [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
         page,
     )
+}
+
+fn rendered_file(path: &str, build: &str, fallback: &str) -> String {
+    // BUILD_SHA is supplied by the image build, but escaping keeps this server
+    // safe and usable if a developer sets it manually.
+    let escaped_build = build
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;");
+    std::fs::read_to_string(path)
+        .unwrap_or_else(|_| fallback.to_owned())
+        .replace("{{BUILD_ID}}", &escaped_build)
 }
 
 fn print_help() {
@@ -1268,6 +1316,161 @@ mod tests {
             }
         }
         assert_eq!((allowed, limited), (40, 40));
+    }
+
+    #[test]
+    fn claim_port_only_startup_configuration() {
+        assert_eq!(server_port(None), 8080);
+        assert_eq!(server_port(Some("9090".to_owned())), 9090);
+        assert_eq!(
+            default_database_url(),
+            "sqlite:/data/changelog-watch.db?mode=rwc"
+        );
+    }
+
+    #[test]
+    fn claim_single_replica_durable_topology() {
+        let topology = include_str!("../deploy/containerapp.yaml");
+        assert!(topology.contains("minReplicas: 1"));
+        assert!(topology.contains("maxReplicas: 1"));
+        assert!(topology.contains("storageType: AzureFile"));
+        assert!(topology.contains("storageName: integration-changelog-watch-data"));
+        assert!(topology.contains("mountPath: /data"));
+        assert!(topology.contains("terminationGracePeriodSeconds: 30"));
+    }
+
+    #[tokio::test]
+    async fn verifier_replica_local_failure_is_reproduced_and_release_topology_prevents_it() {
+        // This is the exact production failure shape: a workspace created on
+        // one independent SQLite replica is unknown to the next replica.
+        let first_db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let second_db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&first_db).await.unwrap();
+        setup(&second_db).await.unwrap();
+        let token = "r".repeat(64);
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash(&token))
+            .bind("now")
+            .execute(&first_db)
+            .await
+            .unwrap();
+        let first = App {
+            db: first_db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let second = App {
+            db: second_db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        assert!(workspace_id(&bearer(&token), &first).await.is_ok());
+        assert!(matches!(
+            workspace_id(&bearer(&token), &second).await,
+            Err(ApiError(StatusCode::UNAUTHORIZED, _))
+        ));
+
+        // The versioned deployment template forbids the second replica, so
+        // both workspace state and the in-process rate bucket have one owner.
+        let topology = include_str!("../deploy/containerapp.yaml");
+        assert!(topology.contains("maxReplicas: 1"));
+    }
+
+    #[tokio::test]
+    async fn verifier_rate_limit_fragmentation_is_reproduced_and_release_topology_prevents_it() {
+        let first = App {
+            db: SqlitePoolOptions::new()
+                .max_connections(1)
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(),
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let second = App {
+            db: SqlitePoolOptions::new()
+                .max_connections(1)
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(),
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let first_router = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(first, rate_limit));
+        let second_router = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(second, rate_limit));
+        let mut accepted = 0;
+        for router in [first_router, second_router] {
+            for _ in 0..40 {
+                let mut request = Request::builder()
+                    .uri("/")
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+                request
+                    .headers_mut()
+                    .insert("x-forwarded-for", "198.51.100.77".parse().unwrap());
+                if router
+                    .clone()
+                    .oneshot(request)
+                    .await
+                    .unwrap()
+                    .status()
+                    .is_success()
+                {
+                    accepted += 1;
+                }
+            }
+        }
+        // Two independent replicas allow two full 40-request bursts. This is
+        // the 120-request production failure in its smallest deterministic form.
+        assert_eq!(accepted, 80);
+        assert!(include_str!("../deploy/containerapp.yaml").contains("maxReplicas: 1"));
+    }
+
+    #[tokio::test]
+    async fn sigterm_shutdown_path_drains_an_active_server() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let app = App {
+            db,
+            build: "shutdown-test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let router = Router::new().route("/health", get(health)).with_state(app);
+        let (send_shutdown, receive_shutdown) = tokio::sync::oneshot::channel::<()>();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router)
+                .with_graceful_shutdown(async move {
+                    receive_shutdown.await.unwrap();
+                })
+                .await
+                .unwrap();
+        });
+        let response = reqwest::get(format!("http://{address}/health"))
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        send_shutdown.send(()).unwrap();
+        tokio::time::timeout(Duration::from_secs(2), server)
+            .await
+            .expect("server must exit after its shutdown signal")
+            .unwrap();
     }
 
     #[test]
