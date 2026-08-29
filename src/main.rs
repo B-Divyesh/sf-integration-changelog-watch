@@ -1,5 +1,5 @@
 use axum::{
-    extract::{ConnectInfo, Path, State},
+    extract::{Path, State},
     http::{header, HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -1126,47 +1126,17 @@ fn internal(_: sqlx::Error) -> ApiError {
     )
 }
 
-/// Azure Container Apps appends the network client address as the final
-/// X-Forwarded-For header value. Earlier header values and earlier hops are
-/// supplied by the caller and must never choose a bucket. Only accept that
-/// final, rightmost hop when the TCP peer is the private Container Apps
-/// ingress. Direct connections use their socket peer instead.
-fn rate_limit_client_ip(headers: &HeaderMap, socket_peer: IpAddr) -> IpAddr {
-    let trusted_ingress = match socket_peer {
-        IpAddr::V4(address) => address.is_private() || address.is_loopback(),
-        IpAddr::V6(address) => {
-            address.is_unique_local() || address.is_unicast_link_local() || address.is_loopback()
-        }
-    };
-    if !trusted_ingress {
-        return socket_peer;
-    }
-    headers
-        // HeaderMap::get returns the first duplicate value. ACA preserves a
-        // caller's value and appends its trusted value as a second line, so
-        // choose the last header value before reading its rightmost hop.
-        .get_all("x-forwarded-for")
-        .iter()
-        .rev()
-        .find_map(|value| value.to_str().ok())
-        .and_then(|value| value.rsplit(',').next())
-        .map(str::trim)
-        .and_then(|value| value.parse::<IpAddr>().ok())
-        .unwrap_or(socket_peer)
-}
-
 async fn rate_limit(
     State(app): State<App>,
     request: Request<axum::body::Body>,
     next: Next,
 ) -> Response {
-    let socket_peer = request
-        .extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|peer| peer.0.ip())
-        // This fallback keeps a direct unit/router invocation bounded as well.
-        .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
-    let client_ip = rate_limit_client_ip(request.headers(), socket_peer);
+    // Container Apps preserves caller-supplied X-Forwarded-For values but does
+    // not provide this container a verifiable client address. Do not turn a
+    // caller-controlled header (or a rotating ingress socket) into a limiter
+    // identity. The product is deliberately one replica, so one shared public
+    // bucket is a secure, bounded fallback for its anonymous API.
+    let client_ip = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
     let now = std::time::Instant::now();
     let retry_after = {
         let mut buckets = app.limiter.lock().expect("rate limiter mutex");
@@ -1428,6 +1398,7 @@ fn cli_ack(path: &str, id: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::extract::ConnectInfo;
     use tower::ServiceExt;
 
     fn bearer(token: &str) -> HeaderMap {
@@ -1724,7 +1695,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn azure_ingress_uses_the_appended_rightmost_hop_and_rejects_spoofed_prefixes() {
+    async fn public_rate_bucket_rejects_spoofed_forwarding_headers_without_growing() {
         let db = SqlitePoolOptions::new()
             .max_connections(1)
             .connect("sqlite::memory:")
@@ -1737,7 +1708,7 @@ mod tests {
         };
         let app = Router::new()
             .route("/", get(|| async { "ok" }))
-            .layer(middleware::from_fn_with_state(state, rate_limit));
+            .layer(middleware::from_fn_with_state(state.clone(), rate_limit));
         let mut allowed = 0;
         let mut limited = 0;
         for request_number in 0..80 {
@@ -1752,7 +1723,7 @@ mod tests {
             );
             request.headers_mut().append(
                 "x-forwarded-for",
-                // ACA's appended duplicate header is the trusted client.
+                // A duplicate header must not create another bucket either.
                 "198.51.100.77".parse().unwrap(),
             );
             request
@@ -1768,6 +1739,7 @@ mod tests {
             }
         }
         assert_eq!((allowed, limited), (40, 40));
+        assert_eq!(state.limiter.lock().unwrap().len(), 1);
     }
 
     #[tokio::test]
@@ -1824,7 +1796,7 @@ mod tests {
             limiter: Arc::new(Mutex::new(HashMap::new())),
         };
         let stale: IpAddr = "198.51.100.41".parse().unwrap();
-        let active: IpAddr = "198.51.100.42".parse().unwrap();
+        let active = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
         state.limiter.lock().unwrap().insert(
             stale,
             RateBucket {
