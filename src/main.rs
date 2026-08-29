@@ -296,7 +296,10 @@ async fn shutdown_signal() {
 }
 
 fn default_database_url() -> String {
-    "sqlite:/data/changelog-watch.db?mode=rwc".to_owned()
+    // Azure Files does not implement SQLite's byte-range lock protocol. The
+    // deployment template enforces one replica and this process owns one
+    // connection, so disabling SQLite's cross-process lock layer is safe.
+    "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1".to_owned()
 }
 
 fn server_port(value: Option<String>) -> u16 {
@@ -1185,7 +1188,7 @@ mod tests {
     async fn default_database_survives_restart_when_data_is_mounted() {
         assert_eq!(
             default_database_url(),
-            "sqlite:/data/changelog-watch.db?mode=rwc"
+            "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1"
         );
         let root = std::env::temp_dir().join(format!("icw-data-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
@@ -1324,7 +1327,7 @@ mod tests {
         assert_eq!(server_port(Some("9090".to_owned())), 9090);
         assert_eq!(
             default_database_url(),
-            "sqlite:/data/changelog-watch.db?mode=rwc"
+            "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1"
         );
     }
 

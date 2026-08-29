@@ -34,7 +34,7 @@ cargo run -- ack --config examples/watches.json --id <action-id>
 
 ## Deploy
 
-Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`). The shipped Container App configuration uses one replica and mounts durable Azure Files at `/data`, where SQLite persists at `/data/changelog-watch.db`.
+Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`). The shipped Container App configuration uses one replica and mounts durable Azure Files at `/data`, where SQLite persists at `/data/changelog-watch.db`. SQLite lock coordination is intentionally disabled for Azure Files, so do not raise the replica count.
 
 See `/privacy` and `/terms` for data handling and source rules.
 
