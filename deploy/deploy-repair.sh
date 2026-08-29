@@ -28,12 +28,8 @@ fi
 remote_sha=$(git -C "$root" ls-remote origin refs/heads/main | awk 'NR == 1 { print $1 }')
 node "$root/scripts/release-identity.mjs" published "$sha" "$remote_sha"
 
-if [ -z "${PREBUILT_IMAGE:-}" ]; then
-  az acr build --registry sociobotregistry --image "$tag" --file Dockerfile \
-    --build-arg "BUILD_SHA=$sha" --build-arg "GIT_SHA=$sha" --build-arg "SOURCE_COMMIT=$sha" "$root"
-else
-  tag=${PREBUILT_IMAGE#sociobotregistry.azurecr.io/}
-fi
+az acr build --registry sociobotregistry --image "$tag" --file Dockerfile \
+  --build-arg "BUILD_SHA=$sha" --build-arg "GIT_SHA=$sha" --build-arg "SOURCE_COMMIT=$sha" "$root"
 
 # A full resource PUT makes the state boundary explicit. Keep the custom
 # domain binding while replacing the image; do not use deploy-container.sh,

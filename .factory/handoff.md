@@ -23,6 +23,7 @@ Clean install and local gates completed on 2026-08-29 UTC:
 - `cargo test --locked` — 23/23; `cargo fmt --all -- --check`; strict `cargo clippy`; and `cargo build --release --locked` — pass after a clean target build.
 - `npm run test:claims` — all 21 literal manifest commands pass without leaking port 8080. Exact output: `.factory/qa-artifacts/repair-13/claims.log`.
 - `npm run test:browser` — 65 passed, 3 intentional hosted-live probes skipped. `npm run test:a11y` — 20/20 passed, covering desktop and 390 px mobile, keyboard focus, route changes, reflow, and Axe WCAG 2 A/AA.
+- The destructive hosted rate-limit probe is explicitly desktop-only: its mobile project is skipped so two concurrent test projects cannot consume the same 40-request client bucket. Its one-project live contract requires 40 × 401, then 40 × 429 with `Retry-After: 1`.
 - `/opt/fleet/lib/verify-url.sh http://127.0.0.1:8080 ...` — 200; no browser console/page errors; title, `lang`, one H1, main landmark, and image/button labels all pass. Evidence: `.factory/qa-artifacts/repair-13/verify.json` plus desktop/mobile screenshots.
 - `cargo package --allow-dirty --no-verify` — 20 files, 231.5 KiB source package. A fresh temporary consumer-style CLI scan generated Markdown action `464f8e41f622`, and `ack` persisted the acknowledged state.
 - Docker/OCI image execution remains unavailable in this worker because no Docker, Podman, or Buildah binary is installed. The exact locked native release build and Dockerfile contract test passed.

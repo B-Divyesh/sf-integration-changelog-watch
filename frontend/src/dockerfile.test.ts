@@ -38,6 +38,7 @@ describe('container build contract', () => {
     expect(deploy).toContain('git -C "$root" ls-remote origin refs/heads/main')
     expect(deploy).toContain('release-identity.mjs" published "$sha" "$remote_sha"')
     expect(deploy).toContain('release-identity.mjs" live "$sha"')
+    expect(deploy).not.toContain('PREBUILT_IMAGE')
     expect(readFileSync(new URL('../../scripts/release-identity.mjs', import.meta.url), 'utf8')).toContain('data-build')
     expect(readFileSync(new URL('../../src/main.rs', import.meta.url), 'utf8')).toContain('reconcile_production_topology')
   })
