@@ -1,6 +1,6 @@
 # Integration Changelog Watch
 
-Turn vendor changes into assigned action cards. It is for engineers who maintain payment, auth, analytics, or messaging integrations.
+Turn vendor changes into assigned action cards. It is for engineers who maintain payment, authentication, analytics, or messaging integrations.
 
 Add a public changelog or RSS feed, keywords, an owner, the affected dependency version, and a local check command. Scan when you are ready to review notices and create action cards.
 

@@ -98,7 +98,7 @@ function dashboard(isDemoBoard = false) {
 }
 
 function home() {
-  return `<section class="hero"><div class="hero-copy"><h1 tabindex="-1">Turn vendor changes into assigned action cards</h1><p class="lede">For engineers who maintain payment, auth, analytics, or messaging integrations.</p><div class="hero-actions"><button class="primary" id="try-demo">Try it with sample data</button><span>See matched notices, owners, versions, and checks.</span></div><ul class="facts"><li>You choose the matching keywords.</li><li>Scans run only when you request them.</li><li>Your workspace is separated from other visitors.</li></ul></div><figure><img src="/paper-cut-hero.webp" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Paper release-note cards move into an assigned action card."></figure></section>${dashboard()}<section class="how" id="how"><p class="eyebrow">How it works</p><h2>Give each vendor change a next step</h2><ol><li><strong>Watch a public feed.</strong><span>Paste a changelog or RSS address you are allowed to read.</span></li><li><strong>Choose your keywords.</strong><span>Use keywords like “webhook”, “deprecation”, or an API version.</span></li><li><strong>Run the right check.</strong><span>Each matching notice includes an owner, dependency version, and check command.</span></li></ol></section><section class="limits"><h2>Hosted workspace scope</h2><p>The hosted workspace holds up to three watches.</p><p>Use the local CLI for a four-watch mapping.</p><h2>What this does not do</h2><p>It does not scan automatically.</p><p>Private, loopback, and link-local addresses are blocked.</p></section>`
+  return `<section class="hero"><div class="hero-copy"><h1 tabindex="-1">Turn vendor changes into assigned action cards</h1><p class="lede">For engineers who maintain payment, authentication, analytics, or messaging integrations.</p><div class="hero-actions"><button class="primary" id="try-demo">Try it with sample data</button><span>See matched notices, owners, versions, and checks.</span></div><ul class="facts"><li>You choose the matching keywords.</li><li>Scans run only when you request them.</li><li>Your workspace is separated from other visitors.</li></ul></div><figure><img src="/paper-cut-hero.webp" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Paper release-note cards move into an assigned action card."></figure></section>${dashboard()}<section class="how" id="how"><p class="eyebrow">How it works</p><h2>Give each vendor change a next step</h2><ol><li><strong>Watch a public feed.</strong><span>Paste a changelog or RSS address you are allowed to read.</span></li><li><strong>Choose your keywords.</strong><span>Use keywords like “webhook”, “deprecation”, or an API version.</span></li><li><strong>Run the right check.</strong><span>Each matching notice includes an owner, dependency version, and check command.</span></li></ol></section><section class="limits"><h2>Hosted workspace scope</h2><p>The hosted workspace holds up to three watches.</p><p>Use the local CLI for a four-watch mapping.</p><h2>What this does not do</h2><p>It does not scan automatically.</p><p>Private, loopback, and link-local addresses are blocked.</p></section>`
 }
 
 function legal(kind: 'privacy' | 'terms') {
@@ -123,11 +123,29 @@ function setMetadata() {
   }
 }
 
+function restoreHashTarget() {
+  if (active !== 'home' || demo || !location.hash) return
+  const id = decodeURIComponent(location.hash.slice(1))
+  if (!id) return
+  requestAnimationFrame(() => {
+    const target = document.getElementById(id)
+    if (!target) return
+    // A cold SPA request resolves its fragment before the target exists.
+    // Restore it after render for direct links and history navigation.
+    const root = document.documentElement
+    const previousBehavior = root.style.scrollBehavior
+    root.style.scrollBehavior = 'auto'
+    target.scrollIntoView({ block: 'start' })
+    root.style.scrollBehavior = previousBehavior
+  })
+}
+
 function render() {
   setMetadata()
   const pageName = active === 'privacy' ? 'Privacy' : active === 'terms' ? 'Terms' : demo ? 'Demo' : 'Integration Changelog Watch'
   app.innerHTML = `<a class="skip" href="#main">Skip to content</a><header><a class="wordmark" href="/" data-route="home"><span aria-hidden="true">▰</span> Changelog Watch</a><nav aria-label="Main navigation"><a href="/demo" data-route="demo">Demo</a><a href="/#how">How it works</a><a href="/privacy" data-route="privacy">Privacy</a></nav></header>${demo ? `<aside class="demo-banner" aria-label="Demo controls">Demo — sample data, nothing is saved <span><button id="reset-demo">Reset demo</button><button id="start-real">Start a private workspace</button><small>Discards this demo.</small></span></aside>` : ''}<main id="main" tabindex="-1">${active === 'privacy' || active === 'terms' ? legal(active) : demo ? dashboard(true) : home()}</main><p class="sr-only" aria-live="polite" aria-atomic="true">${pageName}</p><footer><p>Vendor notices become assigned action cards.</p><p><a href="/privacy" data-route="privacy">Privacy</a> · <a href="/terms" data-route="terms">Terms</a> · Built by Param Factory · build ${escape(buildIdentity)}</p></footer>`
   bind()
+  restoreHashTarget()
 }
 
 function route(path: string, moveFocus = false) {

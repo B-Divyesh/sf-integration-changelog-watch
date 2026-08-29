@@ -57,6 +57,26 @@ test('privacy deep link has its own heading and title', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy for Integration Changelog Watch')
 })
 
+test('a cold How it works deep link reaches its target and survives history navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/#how')
+  const how = page.locator('#how')
+  await expect(how).toBeVisible()
+  await expect.poll(async () => {
+    const box = await how.boundingBox()
+    return Boolean(box && box.y < 844 && box.y + box.height > 0)
+  }).toBe(true)
+
+  await page.getByRole('link', { name: 'Privacy' }).first().click()
+  await expect(page).toHaveURL('/privacy')
+  await page.goBack()
+  await expect(page).toHaveURL('/#how')
+  await expect.poll(async () => {
+    const box = await how.boundingBox()
+    return Boolean(box && box.y < 844 && box.y + box.height > 0)
+  }).toBe(true)
+})
+
 test('legal pages do not create a workspace or make dashboard API requests', async ({ page }) => {
   for (const path of ['/privacy', '/terms']) {
     const apiRequests: string[] = []

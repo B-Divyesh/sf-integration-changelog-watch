@@ -5,7 +5,7 @@ All visitor-facing landing sentences are below 22 words. No banned marketing ter
 | Location | Words | Copy | Status |
 | --- | ---: | --- | --- |
 | Hero heading | 7 | Turn vendor changes into assigned action cards | Pass |
-| Hero audience | 9 | For engineers who maintain payment, auth, analytics, or messaging integrations. | Pass |
+| Hero audience | 10 | For engineers who maintain payment, authentication, analytics, or messaging integrations. | Pass |
 | Hero action result | 7 | See matched notices, owners, versions, and checks. | Pass |
 | Hero fact | 5 | You choose the matching keywords. | Tested: `keyword-edit` |
 | Hero fact | 7 | Scans run only when you request them. | Tested: `requested-scans` |
