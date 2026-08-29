@@ -12,6 +12,8 @@ npm run build                 # creates dist/
 cargo run                     # serves dist/ and API on http://localhost:8080
 ```
 
+The container starts with no database setting because it mounts durable `/data`. On a host without that mount, use an explicit local path: `DATABASE_URL='sqlite:changelog-watch.db?mode=rwc' cargo run`.
+
 For frontend development, use `npm run dev`. Run `npm test` for shipped sample and container-toolchain checks. Run `npm run typecheck` for TypeScript checks, `cargo test` for server checks, and `npm run test:browser` after `npm run build` for browser, keyboard, mobile, privacy, and accessibility coverage. The exact browser commands for each published claim live in `.factory/claims.json`.
 
 Open `http://localhost:8080/demo` for a one-click sandbox. Demo data uses the `demo:integration-changelog-watch` browser storage namespace and is discarded by **Start for real**.

@@ -13,7 +13,11 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
   ],
   webServer: {
+    // The production default is the mounted /data volume. Browser tests use
+    // an explicit local durable file so they never exercise an image-local
+    // fallback that production must not have.
     command: 'cargo run --quiet',
+    env: { DATABASE_URL: 'sqlite:changelog-watch.db?mode=rwc' },
     url: 'http://127.0.0.1:8080/health',
     reuseExistingServer: false,
     timeout: 180_000,
