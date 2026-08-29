@@ -1,0 +1,201 @@
+{
+  "health": {
+    "build": "55b093c06cc0c83180cf3cb6a51d4301d4cf24b9",
+    "ok": true
+  },
+  "checks": {
+    "demo-mobile": {
+      "url": "https://integration-changelog-watch.sociobot.in/?demo=1",
+      "boxes": {
+        "banner": {
+          "x": 0,
+          "y": 68,
+          "width": 390,
+          "height": 165.609375
+        },
+        "title": {
+          "x": 41,
+          "y": 541.609375,
+          "width": 315,
+          "height": 48
+        },
+        "owner": {
+          "x": 51,
+          "y": 707.078125,
+          "width": 295,
+          "height": 24
+        },
+        "version": {
+          "x": 51,
+          "y": 759.546875,
+          "width": 295,
+          "height": 24
+        },
+        "check": {
+          "x": 51,
+          "y": 816.015625,
+          "width": 132.453125,
+          "height": 16
+        }
+      },
+      "allSampleTextInFirstViewport": true,
+      "resetRestored": true,
+      "storage": {
+        "demo": null,
+        "real": null
+      },
+      "requestOrigins": [
+        "https://integration-changelog-watch.sociobot.in"
+      ],
+      "apiRequests": [],
+      "errors": []
+    },
+    "demo-desktop": {
+      "url": "https://integration-changelog-watch.sociobot.in/?demo=1",
+      "boxes": {
+        "banner": {
+          "x": 0,
+          "y": 74,
+          "width": 1440,
+          "height": 60
+        },
+        "title": {
+          "x": 189,
+          "y": 408.015625,
+          "width": 1069,
+          "height": 24
+        },
+        "owner": {
+          "x": 199,
+          "y": 501.484375,
+          "width": 472.265625,
+          "height": 24
+        },
+        "version": {
+          "x": 681.265625,
+          "y": 501.484375,
+          "width": 566.734375,
+          "height": 24
+        },
+        "check": {
+          "x": 199,
+          "y": 557.953125,
+          "width": 132.453125,
+          "height": 16
+        }
+      },
+      "allSampleTextInFirstViewport": true,
+      "resetRestored": true,
+      "storage": {
+        "demo": null,
+        "real": null
+      },
+      "requestOrigins": [
+        "https://integration-changelog-watch.sociobot.in"
+      ],
+      "apiRequests": [],
+      "errors": []
+    },
+    "how-mobile": {
+      "url": "https://integration-changelog-watch.sociobot.in/#how",
+      "scrollY": 1984,
+      "box": {
+        "x": 16,
+        "y": -0.265625,
+        "width": 358,
+        "height": 770.84375
+      },
+      "intersects": true,
+      "errors": []
+    },
+    "how-desktop": {
+      "url": "https://integration-changelog-watch.sociobot.in/#how",
+      "scrollY": 1341,
+      "box": {
+        "x": 164,
+        "y": -0.375,
+        "width": 1112,
+        "height": 414.265625
+      },
+      "intersects": true,
+      "errors": []
+    }
+  },
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "title": "Integration Changelog Watch — Assign vendor changes",
+      "expectedTitle": "Integration Changelog Watch — Assign vendor changes",
+      "h1": 1,
+      "main": 1,
+      "description": "Turn vendor release notes into assigned action cards with an owner, version, and local check.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/",
+      "ogTitle": "Integration Changelog Watch — Assign vendor changes",
+      "twitterTitle": "Integration Changelog Watch — Assign vendor changes",
+      "privacyLinks": 2,
+      "termsLinks": 1,
+      "errors": []
+    },
+    {
+      "path": "/demo",
+      "status": 200,
+      "title": "Demo — Integration Changelog Watch",
+      "expectedTitle": "Demo — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "description": "Explore sample vendor notices and assigned action cards. Demo changes stay separate from your private workspace.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/demo",
+      "ogTitle": "Demo — Integration Changelog Watch",
+      "twitterTitle": "Demo — Integration Changelog Watch",
+      "privacyLinks": 2,
+      "termsLinks": 1,
+      "errors": []
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "title": "Privacy — Integration Changelog Watch",
+      "expectedTitle": "Privacy — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "description": "Read how Integration Changelog Watch separates demo data, workspace records, and third-party requests.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/privacy",
+      "ogTitle": "Privacy — Integration Changelog Watch",
+      "twitterTitle": "Privacy — Integration Changelog Watch",
+      "privacyLinks": 2,
+      "termsLinks": 1,
+      "errors": []
+    },
+    {
+      "path": "/terms",
+      "status": 200,
+      "title": "Terms — Integration Changelog Watch",
+      "expectedTitle": "Terms — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "description": "Read the public-source and responsible-use terms for Integration Changelog Watch.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/terms",
+      "ogTitle": "Terms — Integration Changelog Watch",
+      "twitterTitle": "Terms — Integration Changelog Watch",
+      "privacyLinks": 2,
+      "termsLinks": 1,
+      "errors": []
+    },
+    {
+      "path": "/missing-polish-2",
+      "status": 404,
+      "title": "Page not found — Integration Changelog Watch",
+      "expectedTitle": "Page not found — Integration Changelog Watch",
+      "h1": 1,
+      "main": 1,
+      "description": "The requested Integration Changelog Watch page was not found.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/404",
+      "ogTitle": "Page not found — Integration Changelog Watch",
+      "twitterTitle": "Page not found — Integration Changelog Watch",
+      "privacyLinks": 2,
+      "termsLinks": 1,
+      "errors": []
+    }
+  ]
+}

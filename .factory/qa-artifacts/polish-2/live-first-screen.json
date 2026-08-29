@@ -1,0 +1,64 @@
+{
+  "mobile": {
+    "title": "Integration Changelog Watch — Assign vendor changes",
+    "text": {
+      "heading": "Turn vendor changes into assigned action cards",
+      "audience": "For engineers who maintain payment, authentication, analytics, or messaging integrations.",
+      "action": "Try it with sample data"
+    },
+    "boxes": {
+      "heading": {
+        "x": 16,
+        "y": 92,
+        "width": 358,
+        "height": 175.5625
+      },
+      "audience": {
+        "x": 16,
+        "y": 285.796875,
+        "width": 358,
+        "height": 82.03125
+      },
+      "action": {
+        "x": 16,
+        "y": 391.828125,
+        "width": 241.671875,
+        "height": 46
+      }
+    },
+    "firstScreen": true,
+    "errors": [],
+    "scrollWidth": 390
+  },
+  "desktop": {
+    "title": "Integration Changelog Watch — Assign vendor changes",
+    "text": {
+      "heading": "Turn vendor changes into assigned action cards",
+      "audience": "For engineers who maintain payment, authentication, analytics, or messaging integrations.",
+      "action": "Try it with sample data"
+    },
+    "boxes": {
+      "heading": {
+        "x": 164,
+        "y": 114,
+        "width": 572.390625,
+        "height": 294.75
+      },
+      "audience": {
+        "x": 164,
+        "y": 426.984375,
+        "width": 572.390625,
+        "height": 54.6875
+      },
+      "action": {
+        "x": 164,
+        "y": 516.140625,
+        "width": 241.671875,
+        "height": 46
+      }
+    },
+    "firstScreen": true,
+    "errors": [],
+    "scrollWidth": 1440
+  }
+}

@@ -1,0 +1,539 @@
+
+> integration-changelog-watch@1.0.0 test:claims
+> node scripts/run-claims.mjs
+
+
+[claim:sample-action-cards] npm run build && npm run test:browser -- --grep @claim:sample-action-cards
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 160ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:sample-action-cards
+
+
+Running 2 tests using 2 workers
+(node:9520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9521) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9521) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (1.2m)
+
+[claim:csv-export] npm run build && npm run test:browser -- --grep @claim:csv-export
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 143ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:csv-export
+
+
+Running 2 tests using 2 workers
+(node:9728) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9729) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9728) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9729) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.6s)
+
+[claim:demo-local] npm run build && npm run test:browser -- --grep @claim:demo-local
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 148ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:demo-local
+
+
+Running 2 tests using 2 workers
+(node:9938) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9939) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9939) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9938) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.9s)
+
+[claim:demo-isolation-transitions] npm run build && npm run test:browser -- --grep @claim:demo-isolation-transitions
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 146ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:demo-isolation-transitions
+
+
+Running 2 tests using 2 workers
+(node:10147) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10148) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10147) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10148) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (4.1s)
+
+[claim:workspace-boundary] npm run build && npm run test:browser -- --grep @claim:workspace-boundary
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 141ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:workspace-boundary
+
+
+Running 2 tests using 2 workers
+(node:10385) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10386) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10385) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10386) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.6s)
+
+[claim:hosted-scan-result] cargo test --locked claim_hosted_scan_creates_action_card_from_controlled_fixture
+   Compiling integration-changelog-watch v1.0.0 (/tmp/icw-polish-2-g1sMtu)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.88s
+     Running unittests src/main.rs (target/debug/deps/integration_changelog_watch-a55dec8daba68031)
+
+running 1 test
+test tests::claim_hosted_scan_creates_action_card_from_controlled_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.01s
+
+
+[claim:hosted-watch-limit] npm run build && npm run test:browser -- --grep @claim:hosted-watch-limit
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 141ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:hosted-watch-limit
+
+
+Running 2 tests using 2 workers
+(node:10873) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10872) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10872) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10873) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.6s)
+
+[claim:keyword-edit] npm run build && npm run test:browser -- --grep @claim:keyword-edit
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 153ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:keyword-edit
+
+
+Running 2 tests using 2 workers
+(node:11083) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11082) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11083) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11082) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.9s)
+
+[claim:requested-scans] npm run build && npm run test:browser -- --grep @claim:requested-scans
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 144ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:requested-scans
+
+
+Running 2 tests using 2 workers
+(node:11286) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11287) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11287) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11286) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (3.1s)
+
+[claim:redirecting-feeds] cargo test --locked claim_redirecting_feeds_are_rejected
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running unittests src/main.rs (target/debug/deps/integration_changelog_watch-a55dec8daba68031)
+
+running 1 test
+test tests::claim_redirecting_feeds_are_rejected ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+
+[claim:watch-file-portability] npm run build && npm run test:browser -- --grep @claim:watch-file-portability
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 143ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:watch-file-portability
+
+
+Running 2 tests using 2 workers
+(node:11507) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11507) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (3.0s)
+
+[claim:watch-file-rejection-preserves-watches] npm run build && npm run test:browser -- --grep @claim:watch-file-rejection-preserves-watches
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 147ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:watch-file-rejection-preserves-watches
+
+
+Running 2 tests using 2 workers
+(node:11717) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11716) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11716) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11717) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (3.2s)
+
+[claim:cli-more-feeds] npm run build && npm run test:browser -- --grep @claim:cli-more-feeds
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 147ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:cli-more-feeds
+
+
+Running 2 tests using 2 workers
+(node:11951) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11950) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11950) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11951) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.3s)
+
+[claim:cli-repository-workflow] npm run build && npm run test:browser -- --grep @claim:cli-repository-workflow
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 144ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:cli-repository-workflow
+
+
+Running 2 tests using 2 workers
+(node:12056) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12057) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12056) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12057) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.6s)
+
+[claim:cli-demo-local] npm run build && npm run test:browser -- --grep @claim:cli-demo-local
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 146ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:cli-demo-local
+
+
+Running 2 tests using 2 workers
+(node:12176) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12177) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12177) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12176) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.3s)
+
+[claim:cli-shipped-mapping-local] npm run build && npm run test:browser -- --grep @claim:cli-shipped-mapping-local
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 158ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:cli-shipped-mapping-local
+
+
+Running 2 tests using 2 workers
+(node:12284) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12283) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12284) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12283) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.3s)
+
+[claim:api-contract] npm run build && npm run test:browser -- --grep @claim:api-contract
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-D6Fd_j6A.css   8.90 kB │ gzip: 2.76 kB
+../dist/assets/index-B9WZvwpt.js   19.82 kB │ gzip: 6.95 kB
+✓ built in 137ms
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:api-contract
+
+
+Running 2 tests using 2 workers
+(node:12390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12391) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12391) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··
+  2 passed (2.5s)
+
+[claim:container-build-stage] npm test -- --testNamePattern '^container build contract @claim:container-build-stage uses the official Rust build stage and locked build command$'
+
+> integration-changelog-watch@1.0.0 test
+> vitest run --testNamePattern ^container build contract @claim:container-build-stage uses the official Rust build stage and locked build command$
+
+
+ RUN  v3.2.7 /tmp/icw-polish-2-g1sMtu/frontend
+
+ ✓ src/dockerfile.test.ts (5 tests | 4 skipped) 3ms
+ ↓ src/sample.test.ts (2 tests | 2 skipped)
+
+ Test Files  1 passed | 1 skipped (2)
+      Tests  1 passed | 6 skipped (7)
+   Start at  16:49:11
+   Duration  585ms (transform 92ms, setup 0ms, collect 118ms, tests 3ms, environment 0ms, prepare 247ms)
+
+
+[claim:database-persistence] cargo test --locked default_database_survives_restart_when_data_is_mounted
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running unittests src/main.rs (target/debug/deps/integration_changelog_watch-a55dec8daba68031)
+
+running 1 test
+test tests::default_database_survives_restart_when_data_is_mounted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.08s
+
+
+[claim:port-only-startup] cargo test --locked claim_port_only_startup_configuration
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/main.rs (target/debug/deps/integration_changelog_watch-a55dec8daba68031)
+
+running 1 test
+test tests::claim_port_only_startup_configuration ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+
+[claim:single-replica-durable-data] cargo test --locked claim_single_replica_durable_topology
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running unittests src/main.rs (target/debug/deps/integration_changelog_watch-a55dec8daba68031)
+
+running 1 test
+test tests::claim_single_replica_durable_topology ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.01s
+
+
+All 21 literal claim commands passed without leaking port 8080.

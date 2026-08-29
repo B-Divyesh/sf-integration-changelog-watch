@@ -1,1 +1,1 @@
-Turn vendor changes into assigned action cards with owners, versions, and checks.
+Track vendor release notes and create assigned action cards with owners, versions, and checks.

@@ -1,0 +1,30 @@
+   Compiling integration-changelog-watch v1.0.0 (/work/repo)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.06s
+     Running unittests src/main.rs (target/debug/deps/integration_changelog_watch-a55dec8daba68031)
+
+running 23 tests
+test tests::blocks_private_and_malformed_destinations ... ok
+test tests::azure_appended_client_hop_ignores_rotating_caller_prefixes ... ok
+test tests::claim_port_only_startup_configuration ... ok
+test tests::claim_redirecting_feeds_are_rejected ... ok
+test tests::claim_single_replica_durable_topology ... ok
+test tests::claim_hosted_scan_creates_action_card_from_controlled_fixture ... ok
+test tests::clients_have_independent_allowances_and_health_is_never_throttled ... ok
+test tests::cli_scan_persists_deduplication_and_acknowledgements_for_local_repository_feeds ... ok
+test tests::direct_peer_ignores_caller_supplied_forwarding_headers ... ok
+test tests::default_database_survives_restart_when_data_is_mounted ... ok
+test tests::hosted_feed_limit_rejects_declared_and_streamed_oversize_before_buffering ... ok
+test tests::parses_atom_html_titles_and_html_changelog_headings ... ok
+test tests::parses_every_matching_rss_and_preserves_notice_permalink ... ok
+test tests::parses_standard_rss_cdata_as_readable_text ... ok
+test tests::rate_limiter_evicts_idle_client_buckets ... ok
+test tests::rejected_watch_import_preserves_existing_workspace_watches ... ok
+test tests::replica_local_rate_limits_fragment_the_40_request_allowance ... ok
+test tests::replica_local_sqlite_failure_is_reproduced ... ok
+test tests::sigterm_shutdown_path_drains_an_active_server ... ok
+test tests::durable_single_replica_recovers_tokens_after_restart_and_keeps_one_40_request_burst ... ok
+test tests::workspace_rows_are_private_and_actions_use_the_dashboard_schema ... ok
+test tests::workspace_tokens_are_not_plaintext_rows ... ok
+test tests::watch_limit_is_atomic_under_concurrent_creates ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s

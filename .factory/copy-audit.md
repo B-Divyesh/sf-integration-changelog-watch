@@ -36,4 +36,4 @@ All visitor-facing landing sentences are below 22 words. No banned marketing ter
 | Isolated hosted data | workspace |
 | Local tool | CLI |
 
-Catalog description: “Turn vendor changes into assigned action cards with owners, versions, and checks.” (12 words)
+Catalog description: “Track vendor release notes and create assigned action cards with owners, versions, and checks.” (14 words, 94 characters)
