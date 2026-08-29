@@ -1,0 +1,11 @@
+{
+  "url": "https://integration-changelog-watch.sociobot.in/demo?verify=c2b3a97",
+  "title": "Demo — Integration Changelog Watch",
+  "visible": {
+    "Stripe retires legacy webhook event format": true,
+    "Maya · Payments": true,
+    "stripe-node 16.2": true,
+    "pnpm test:stripe": true
+  },
+  "errors": []
+}

@@ -1,31 +1,26 @@
-# Handoff — adversarial review 1
+# Handoff — polish 1
 
 ## Outcome
 
-**FAIL.** The full report is `.factory/review-1.md`. No product code was modified.
+All 19 findings from `.factory/review-1.md` are repaired and mapped in `.factory/polish-1.md`. The deployed repair is `c2b3a9716b68357317753ab71eb78b7af3d12b9a` at <https://integration-changelog-watch.sociobot.in>.
 
-The cold first screen clearly states the job, audience, and first action. All 13 listed claim commands pass from a clean clone, and demo storage/request isolation works. The release still has two blocking findings: `/demo` repeats the landing hero instead of showing realistic sample work in the first 390 px viewport, and the moderate Axe landmark issue recorded by the earlier handoff remains live.
+The demo now opens directly onto visible sample work at 390×844. Watch configuration moves between the dashboard and CLI JSON schema through previewed import/export. Route metadata, 404 navigation, terminology, exact claim coverage, and the full Axe result were repaired without changing the paper-cut operations-board identity.
 
-## Work completed
+## Verification
 
-- Opened the live site cold in fresh 390 × 844 and 1440 × 900 browser contexts before scrolling.
-- Audited every landing/README copy unit with word counts, terminology, claim coverage, headings, and action labels.
-- Exercised demo entry, acknowledge, Reset demo, Start for real, storage namespaces, and a direct-demo request log.
-- Ran every exact `.factory/claims.json` command after `npm ci` in clean clone `/tmp/icw-review-1-9qlY2f`; all passed.
-- Rechecked the earlier handoff, route titles/metadata, deep links, browser Back and focus, the designed 404, crawled links, mobile reflow/touch targets, full Axe, privacy requests, visual identity, and missed leverage.
-- Added review evidence under `.factory/review-1-artifacts/`.
+- Clean clone at `/tmp/icw-clean-0WsED3`: `npm ci`, then every command listed in `.factory/claims.json` completed from the committed source.
+- Local: `npm test`, `npm run typecheck`, `npm run build`, `cargo test --locked`, `cargo build --release --locked`, `npm run test:browser`, and `npm run test:a11y` passed.
+- Live: `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:browser` passed with 59 tests and one intentional duplicate-project skip.
+- Live: `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:a11y` passed 16/16, including full Axe with zero violations.
+- Live: `/opt/fleet/lib/verify-url.sh 'https://integration-changelog-watch.sociobot.in/?verify=c2b3a97' .factory/qa-artifacts/polish-1-live` returned 200 with no console errors, one h1, `lang`, `main`, and complete image alt coverage.
+- Live health check: `https://integration-changelog-watch.sociobot.in/health?check=c2b3a97` returned build `c2b3a9716b68357317753ab71eb78b7af3d12b9a`.
 
-## Verification run
+Evidence is under `.factory/qa-artifacts/polish-1-live/`, especially `demo-first-mobile.png`, `demo-first-mobile.json`, and `verify.json`.
 
-```sh
-npm test
-npm run typecheck
-npm run build
-PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:a11y
-```
+## Deployment
 
-These commands passed. The separate full-Axe inspection still reports `landmark-complementary-is-top-level` for `.watches`; the shipped accessibility test filters out moderate findings.
+Committed and pushed repair commits: `f9604c4`, `e5e1f61`, `7a2e905`, and `c2b3a97`. Deployment used `./deploy/deploy-repair.sh`, which builds in ACR and applies the one-replica Azure Files `/data` configuration. The deployment now sets the source build SHA explicitly at runtime so `/health` and the footer identify the deployed revision correctly.
 
-## Required next work
+## Known gaps
 
-Resolve all findings in `.factory/review-1.md`, starting with F-1-1 and F-1-2. Then rerun the review from scratch. Do not treat the passing listed claims as a release pass while the demo first-view contract, historical accessibility finding, unlisted claims, and minor copy/metadata findings remain.
+None.
