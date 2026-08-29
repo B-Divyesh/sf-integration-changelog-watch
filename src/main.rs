@@ -864,9 +864,14 @@ async fn rate_limit(
             tokens: 40.0,
             refreshed: now,
         });
-        let elapsed = now.duration_since(bucket.refreshed).as_secs_f64();
-        bucket.tokens = (bucket.tokens + elapsed * 20.0).min(40.0);
-        bucket.refreshed = now;
+        // Refill on whole-second boundaries. Besides making Retry-After easy
+        // to explain, this preserves the advertised 40-request burst when a
+        // real ingress fans one client burst over a few dozen milliseconds.
+        let elapsed_seconds = now.duration_since(bucket.refreshed).as_secs();
+        if elapsed_seconds > 0 {
+            bucket.tokens = (bucket.tokens + elapsed_seconds as f64 * 20.0).min(40.0);
+            bucket.refreshed += Duration::from_secs(elapsed_seconds);
+        }
         if bucket.tokens >= 1.0 {
             bucket.tokens -= 1.0;
             None

@@ -11,13 +11,18 @@ subscription=${AZURE_SUBSCRIPTION_ID:-283af945-693b-4a6e-b952-df928d0a18a9}
 resource_group=sociobot
 app=sf-integration-changelog-watch
 environment=factory-env
-base="https://management.azure.com/subscriptions/$subscription/resourceGroups/$resource_group"
-environment_id="$base/providers/Microsoft.App/managedEnvironments/$environment"
-identity_id="$base/providers/Microsoft.ManagedIdentity/userAssignedIdentities/factory-worker-identity"
+resource_id="/subscriptions/$subscription/resourceGroups/$resource_group"
+base="https://management.azure.com$resource_id"
+environment_id="$resource_id/providers/Microsoft.App/managedEnvironments/$environment"
+identity_id="$resource_id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/factory-worker-identity"
 certificate_id="$environment_id/managedCertificates/cert-integration-changelog-watch"
 
-az acr build --registry sociobotregistry --image "$tag" --file Dockerfile \
-  --build-arg "BUILD_SHA=$sha" --build-arg "GIT_SHA=$sha" --build-arg "SOURCE_COMMIT=$sha" "$root"
+if [ -z "${PREBUILT_IMAGE:-}" ]; then
+  az acr build --registry sociobotregistry --image "$tag" --file Dockerfile \
+    --build-arg "BUILD_SHA=$sha" --build-arg "GIT_SHA=$sha" --build-arg "SOURCE_COMMIT=$sha" "$root"
+else
+  tag=${PREBUILT_IMAGE#sociobotregistry.azurecr.io/}
+fi
 
 # A full resource PUT makes the state boundary explicit. Keep the custom
 # domain binding while replacing the image; do not use deploy-container.sh,
