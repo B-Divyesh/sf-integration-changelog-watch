@@ -50,6 +50,8 @@ npm test                    # 7/7 Vitest tests
 npm run typecheck
 npm run lint
 cargo test --locked         # 23/23 Rust tests
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
 npm run build               # creates dist/
 cargo build --release --locked
 npm run test:browser        # 68/68 Playwright tests

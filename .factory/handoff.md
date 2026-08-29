@@ -7,7 +7,7 @@ The requested candidate `b7db705d7a157da83a4b15f4d54f3814454ac94c` is not presen
 ## What was verified
 
 - On the available clean revision only, `npm ci` and all 21 literal `.factory/claims.json` commands passed; the claim runner confirmed no port-8080 leaks.
-- `npm test` (7/7), typecheck, lint, `cargo test --locked` (23/23), production Vite build, locked optimized Rust build, and the full Playwright suite (68/68) passed.
+- `npm test` (7/7), typecheck, lint, `cargo test --locked` (23/23), `cargo fmt --check`, strict `cargo clippy`, production Vite build, locked optimized Rust build, and the full Playwright suite (68/68) passed.
 - The live deployed revision passed cold first-read, desktop/390px use, keyboard/focus, reduced motion, zero Axe WCAG 2 A/AA violations, zero console/page errors, same-origin request/privacy checks, route/link checks, headers/caching, and rate-limit enforcement (`429` plus `Retry-After: 1` after the burst allowance).
 - The CLI `demo`, bundled local `scan`, and `ack` workflow were run in a fresh temporary workspace; scan created a Markdown action card and acknowledge updated both card and state.
 
