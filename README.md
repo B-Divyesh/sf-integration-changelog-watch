@@ -2,7 +2,7 @@
 
 Turn vendor changelog changes into owned integration actions. It is for engineers who maintain payment, auth, analytics, or messaging integrations.
 
-Add a public changelog or RSS feed, matching words, an owner, and a local check command. Scan when you want to review notices and turn matches into action cards.
+Add a public changelog or RSS feed, matching words, an owner, the affected dependency version, and a local check command. Scan when you want to review notices and turn matches into action cards.
 
 ## Run locally
 
@@ -31,6 +31,10 @@ cargo run -- ack --config examples/watches.json --id <action-id>
 ```
 
 `demo` prints the bundled Markdown action-card sample. `scan --config` reads a repository-owned JSON watch mapping, writes new Markdown action cards under `.integration-changelog-watch/actions/`, and stores hashes plus acknowledgement state in `.integration-changelog-watch/state.json`. Each card prints its hash-derived action ID; pass that ID to `ack`. The shipped example uses the bundled `examples/sample-feed.xml`, so it works without a network request.
+
+## Hosted scope
+
+The hosted dashboard is deliberately a free, private, three-watch workspace. It has no account system, shared team workspaces, unlimited-watch tier, or paid plan. This is an explicit scope decision: a browser-held workspace token is not a safe team identity or billing entitlement. Teams that need repository-owned mappings with more feeds can use the local CLI today; hosted team collaboration is not offered or implied.
 
 ## Deploy
 

@@ -11,4 +11,13 @@ describe('container build contract', () => {
     expect(dockerfile).toContain('COPY Cargo.toml Cargo.lock ./')
     expect(dockerfile).toContain('RUN cargo build --release --locked')
   })
+
+  it('ships a repair deployment that cannot restore the generic multi-replica topology', () => {
+    const deploy = readFileSync(new URL('../../deploy/deploy-repair.sh', import.meta.url), 'utf8')
+    expect(deploy).toContain('"maxReplicas":1')
+    expect(deploy).toContain('"minReplicas":1')
+    expect(deploy).toContain('"storageType":"AzureFile"')
+    expect(deploy).toContain('"mountPath":"/data"')
+    expect(deploy).toContain('terminationGracePeriodSeconds')
+  })
 })

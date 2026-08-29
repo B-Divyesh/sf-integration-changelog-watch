@@ -12,7 +12,7 @@ test('real workspace renders the server action schema and acknowledges its numer
   let acknowledged = false
   await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'a'.repeat(64) }) }))
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 7, vendor: 'Vendor', url: 'https://vendor.example/feed', keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }]) }))
-  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 42, watchId: 7, title: 'Webhook change', excerpt: 'A real feed notice', matched: 'webhook', url: 'https://vendor.example/notice', owner: 'Maya', command: 'npm test', acknowledged, seenAt: 'Today' }]) }))
+  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 42, watchId: 7, title: 'Webhook change', excerpt: 'A real feed notice', matched: 'webhook', url: 'https://vendor.example/notice', owner: 'Maya', version: 'vendor-sdk 4.2', command: 'npm test', acknowledged, seenAt: 'Today' }]) }))
   await page.route('**/api/actions/42', async route => {
     expect(route.request().method()).toBe('POST')
     expect(route.request().postDataJSON()).toEqual({ acknowledged: true })
@@ -21,6 +21,7 @@ test('real workspace renders the server action schema and acknowledges its numer
   })
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Webhook change' })).toBeVisible()
+  await expect(page.getByText('vendor-sdk 4.2')).toBeVisible()
   await expect(page.getByRole('link', { name: /Open vendor notice/ })).toHaveAttribute('href', 'https://vendor.example/notice')
   await page.getByRole('button', { name: 'Acknowledge action' }).click()
   await expect.poll(() => acknowledged).toBe(true)

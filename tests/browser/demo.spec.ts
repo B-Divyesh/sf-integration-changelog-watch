@@ -6,8 +6,9 @@ test('@claim:sample-action-cards opens the seeded demo workspace', async ({ page
   await page.getByRole('button', { name: 'Try it with sample data' }).click()
   await expect(page).toHaveURL(/\/demo$/)
   await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible()
-  await expect(page.getByRole('heading', { name: /action needs an owner/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /action needs acknowledgement/i })).toBeVisible()
   await expect(page.getByText('Maya · Payments').first()).toBeVisible()
+  await expect(page.getByText('stripe-node 16.2').first()).toBeVisible()
   await expect(page.getByText('pnpm test:stripe')).toBeVisible()
 })
 
@@ -26,7 +27,7 @@ test('an in-flight real workspace hydration cannot overwrite the demo sample', a
   await watchesRequested
   await page.getByRole('button', { name: 'Try it with sample data' }).click()
   releaseRead()
-  await expect(page.getByRole('heading', { name: /action needs an owner/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /action needs acknowledgement/i })).toBeVisible()
   await expect(page.getByText('Maya · Payments').first()).toBeVisible()
 })
 
@@ -47,7 +48,7 @@ test('keyboard navigation exposes the skip link and can acknowledge a demo actio
   await expect(page.locator('#main')).toBeFocused()
   await page.getByRole('button', { name: 'Acknowledge action' }).focus()
   await page.keyboard.press('Space')
-  await expect(page.getByText('No actions need an owner')).toBeVisible()
+  await expect(page.getByText('No actions need acknowledgement')).toBeVisible()
   await expect(page.locator('[data-action="a1"]')).toBeFocused()
 })
 
@@ -63,7 +64,7 @@ test('@claim:demo-local demo stays same-origin and does not write real workspace
   page.on('request', request => requests.push(request.url()))
   await page.goto('/demo')
   await page.getByRole('button', { name: 'Acknowledge action' }).click()
-  await expect(page.getByText('No actions need an owner')).toBeVisible()
+  await expect(page.getByText('No actions need acknowledgement')).toBeVisible()
   const origin = new URL(page.url()).origin
   expect(requests.every(url => new URL(url).origin === origin)).toBe(true)
   expect(await page.evaluate(() => localStorage.getItem('icw:workspace'))).toBeNull()
@@ -77,9 +78,9 @@ test('@claim:demo-isolation-transitions demo makes no API call, resets its sampl
   })
   await page.goto('/demo')
   await page.getByRole('button', { name: 'Acknowledge action' }).click()
-  await expect(page.getByText('No actions need an owner')).toBeVisible()
+  await expect(page.getByText('No actions need acknowledgement')).toBeVisible()
   await page.getByRole('button', { name: 'Reset demo' }).click()
-  await expect(page.getByRole('heading', { name: /action needs an owner/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /action needs acknowledgement/i })).toBeVisible()
   expect(apiRequests).toEqual([])
   await page.getByRole('button', { name: 'Start for real' }).click()
   await expect(page).toHaveURL(/\/$/)

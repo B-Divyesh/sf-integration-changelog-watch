@@ -592,6 +592,14 @@ footer a {
   .card-actions button {
     width: 100%;
   }
+  .action-top {
+    align-items: start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dash-head h2 {
+    overflow-wrap: anywhere;
+  }
   .action,
   .watches,
   .empty {

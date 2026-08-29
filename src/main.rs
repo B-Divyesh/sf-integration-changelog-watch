@@ -71,6 +71,7 @@ struct Action {
     matched: String,
     url: String,
     owner: String,
+    version: String,
     command: String,
     acknowledged: bool,
     #[serde(rename = "seenAt")]
@@ -190,21 +191,14 @@ async fn main() {
     let db_url = supplied_database_url
         .clone()
         .unwrap_or_else(default_database_url);
-    let db = match SqlitePoolOptions::new()
-        // This deployment deliberately runs one replica with SQLite on the
-        // mounted Azure Files volume. A single pool connection queues the
-        // dashboard's parallel reads in-process before they reach SQLite.
+    // SQLite and the rate bucket are deliberately single-replica state. Do
+    // not fall back to the image filesystem: that would make a failed volume
+    // mount look healthy while silently splitting or losing workspaces.
+    let db = SqlitePoolOptions::new()
         .max_connections(1)
         .connect(&db_url)
         .await
-    {
-        Ok(pool) => pool,
-        Err(_) => SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite:changelog-watch.db?mode=rwc")
-            .await
-            .expect("SQLite starts"),
-    };
+        .expect("durable SQLite database starts");
     setup(&db).await.expect("schema");
     let state = App {
         db,
@@ -310,12 +304,19 @@ async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS workspaces(id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL);
          CREATE TABLE IF NOT EXISTS workspace_watches(id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, vendor TEXT NOT NULL, url TEXT NOT NULL, keywords TEXT NOT NULL, owner TEXT NOT NULL, version TEXT NOT NULL, command TEXT NOT NULL, last_hash TEXT, last_scanned TEXT, FOREIGN KEY(workspace_id) REFERENCES workspaces(id));
-         CREATE TABLE IF NOT EXISTS workspace_actions(id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, watch_id INTEGER NOT NULL, notice_key TEXT NOT NULL, title TEXT NOT NULL, excerpt TEXT NOT NULL, matched TEXT NOT NULL, url TEXT NOT NULL, owner TEXT NOT NULL, command TEXT NOT NULL, acknowledged INTEGER NOT NULL DEFAULT 0, seen_at TEXT NOT NULL, UNIQUE(workspace_id, watch_id, notice_key), FOREIGN KEY(workspace_id) REFERENCES workspaces(id));
+         CREATE TABLE IF NOT EXISTS workspace_actions(id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, watch_id INTEGER NOT NULL, notice_key TEXT NOT NULL, title TEXT NOT NULL, excerpt TEXT NOT NULL, matched TEXT NOT NULL, url TEXT NOT NULL, owner TEXT NOT NULL, version TEXT NOT NULL DEFAULT '', command TEXT NOT NULL, acknowledged INTEGER NOT NULL DEFAULT 0, seen_at TEXT NOT NULL, UNIQUE(workspace_id, watch_id, notice_key), FOREIGN KEY(workspace_id) REFERENCES workspaces(id));
          CREATE INDEX IF NOT EXISTS workspace_watches_owner ON workspace_watches(workspace_id);
          CREATE INDEX IF NOT EXISTS workspace_actions_owner ON workspace_actions(workspace_id);",
     )
     .execute(db)
     .await?;
+    // Existing durable workspaces predate the action-card version snapshot.
+    // SQLite has no ADD COLUMN IF NOT EXISTS, so an already-migrated database
+    // simply reports the duplicate-column error and remains usable.
+    let _ =
+        sqlx::query("ALTER TABLE workspace_actions ADD COLUMN version TEXT NOT NULL DEFAULT ''")
+            .execute(db)
+            .await;
     Ok(())
 }
 
@@ -471,7 +472,7 @@ async fn delete_watch(
 
 async fn list_actions(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Vec<Action>>> {
     let workspace = workspace_id(&headers, &app).await?;
-    let actions = sqlx::query_as("SELECT id, watch_id, title, excerpt, matched, url, owner, command, acknowledged, seen_at FROM workspace_actions WHERE workspace_id=? ORDER BY acknowledged, id DESC")
+    let actions = sqlx::query_as("SELECT id, watch_id, title, excerpt, matched, url, owner, version, command, acknowledged, seen_at FROM workspace_actions WHERE workspace_id=? ORDER BY acknowledged, id DESC")
         .bind(workspace).fetch_all(&app.db).await.map_err(internal)?;
     Ok(Json(actions))
 }
@@ -497,14 +498,14 @@ async fn ack_action(
             "That action does not exist in this workspace.".to_owned(),
         ));
     }
-    let action = sqlx::query_as("SELECT id, watch_id, title, excerpt, matched, url, owner, command, acknowledged, seen_at FROM workspace_actions WHERE id=? AND workspace_id=?")
+    let action = sqlx::query_as("SELECT id, watch_id, title, excerpt, matched, url, owner, version, command, acknowledged, seen_at FROM workspace_actions WHERE id=? AND workspace_id=?")
         .bind(id).bind(workspace).fetch_one(&app.db).await.map_err(internal)?;
     Ok(Json(action))
 }
 
 async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<ScanResult>> {
     let workspace = workspace_id(&headers, &app).await?;
-    let watches: Vec<WatchRow> = sqlx::query_as("SELECT id, vendor, url, keywords, owner, command, last_hash FROM workspace_watches WHERE workspace_id=?")
+    let watches: Vec<WatchRow> = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_hash FROM workspace_watches WHERE workspace_id=?")
         .bind(workspace).fetch_all(&app.db).await.map_err(internal)?;
     let mut made = 0;
     let mut failures = Vec::new();
@@ -536,8 +537,8 @@ async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Scan
                     } else {
                         notice.title
                     };
-                    let inserted = sqlx::query("INSERT OR IGNORE INTO workspace_actions(workspace_id,watch_id,notice_key,title,excerpt,matched,url,owner,command,seen_at) VALUES(?,?,?,?,?,?,?,?,?,?)")
-                        .bind(workspace).bind(watch.id).bind(key).bind(title).bind(notice.excerpt.chars().take(420).collect::<String>()).bind(rule).bind(notice.url).bind(&watch.owner).bind(&watch.command).bind(Utc::now().to_rfc3339())
+                    let inserted = sqlx::query("INSERT OR IGNORE INTO workspace_actions(workspace_id,watch_id,notice_key,title,excerpt,matched,url,owner,version,command,seen_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)")
+                        .bind(workspace).bind(watch.id).bind(key).bind(title).bind(notice.excerpt.chars().take(420).collect::<String>()).bind(rule).bind(notice.url).bind(&watch.owner).bind(&watch.version).bind(&watch.command).bind(Utc::now().to_rfc3339())
                         .execute(&app.db).await.map_err(internal)?;
                     made += inserted.rows_affected() as usize;
                 }
@@ -568,6 +569,7 @@ struct WatchRow {
     url: String,
     keywords: String,
     owner: String,
+    version: String,
     command: String,
     last_hash: Option<String>,
 }
@@ -958,7 +960,7 @@ fn print_help() {
 }
 
 fn print_demo_markdown() {
-    println!("# Integration changelog watch demo\n\n## Stripe retires legacy webhook event format\n\n- **Matched rule:** webhook\n- **Owner:** Maya · Payments\n- **Check:** `pnpm test:stripe`\n\nReview signature parsing and event fixtures.\n\n## Auth0 changes refresh token rotation defaults\n\n- **Matched rule:** token\n- **Owner:** Ishan · Identity\n- **Check:** `pnpm test:auth`\n\nCheck explicit configuration before the next environment.");
+    println!("# Integration changelog watch demo\n\n## Stripe retires legacy webhook event format\n\n- **Status:** Needs acknowledgement\n- **Matched rule:** webhook\n- **Owner:** Maya · Payments\n- **Affected dependency:** stripe-node 16.2\n- **Check:** `pnpm test:stripe`\n\nReview signature parsing and event fixtures.\n\n## Auth0 changes refresh token rotation defaults\n\n- **Status:** Needs acknowledgement\n- **Matched rule:** token\n- **Owner:** Ishan · Identity\n- **Affected dependency:** auth0-spa-js 2.1\n- **Check:** `pnpm test:auth`\n\nCheck explicit configuration before the next environment.");
 }
 
 async fn cli_scan(path: &str) -> Result<(), String> {
@@ -997,7 +999,12 @@ async fn cli_scan(path: &str) -> Result<(), String> {
                     continue;
                 }
                 let id = notice_hash[..12].to_owned();
-                let card = format!("# {title}\n\n- **Action ID:** `{id}`\n- **Status:** Needs owner\n- **Matched rule:** {rule}\n- **Owner:** {}\n- **Check:** `{}`\n- **Notice:** {}\n\n{}\n", watch.owner, watch.command, notice.url, notice.excerpt);
+                let dependency = if watch.version.trim().is_empty() {
+                    "Not recorded"
+                } else {
+                    &watch.version
+                };
+                let card = format!("# {title}\n\n- **Action ID:** `{id}`\n- **Status:** Needs acknowledgement\n- **Matched rule:** {rule}\n- **Owner:** {}\n- **Affected dependency:** {dependency}\n- **Check:** `{}`\n- **Notice:** {}\n\n{}\n", watch.owner, watch.command, notice.url, notice.excerpt);
                 std::fs::create_dir_all(state_dir.join("actions")).map_err(|_| {
                     "could not create the repository action-card directory".to_owned()
                 })?;
@@ -1149,6 +1156,7 @@ mod tests {
         let json = serde_json::to_value(&actions[0]).unwrap();
         assert_eq!(json["url"], "https://vendor.example/notice");
         assert_eq!(json["seenAt"], "Today");
+        assert_eq!(json["version"], "");
         assert!(json.get("source_url").is_none());
     }
 
@@ -1343,7 +1351,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn verifier_replica_local_failure_is_reproduced_and_release_topology_prevents_it() {
+    async fn replica_local_sqlite_failure_is_reproduced() {
         // This is the exact production failure shape: a workspace created on
         // one independent SQLite replica is unknown to the next replica.
         let first_db = SqlitePoolOptions::new()
@@ -1380,15 +1388,10 @@ mod tests {
             workspace_id(&bearer(&token), &second).await,
             Err(ApiError(StatusCode::UNAUTHORIZED, _))
         ));
-
-        // The versioned deployment template forbids the second replica, so
-        // both workspace state and the in-process rate bucket have one owner.
-        let topology = include_str!("../deploy/containerapp.yaml");
-        assert!(topology.contains("maxReplicas: 1"));
     }
 
     #[tokio::test]
-    async fn verifier_rate_limit_fragmentation_is_reproduced_and_release_topology_prevents_it() {
+    async fn replica_local_rate_limits_fragment_the_40_request_allowance() {
         let first = App {
             db: SqlitePoolOptions::new()
                 .max_connections(1)
@@ -1438,7 +1441,73 @@ mod tests {
         // Two independent replicas allow two full 40-request bursts. This is
         // the 120-request production failure in its smallest deterministic form.
         assert_eq!(accepted, 80);
-        assert!(include_str!("../deploy/containerapp.yaml").contains("maxReplicas: 1"));
+    }
+
+    #[tokio::test]
+    async fn durable_single_replica_recovers_tokens_after_restart_and_keeps_one_40_request_burst() {
+        let root = std::env::temp_dir().join(format!("icw-durable-topology-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let database = root.join("changelog-watch.db");
+        let url = format!("sqlite:{}?mode=rwc", database.display());
+        let token = "durable-workspace-token-".repeat(3);
+
+        // Process one creates the workspace and exits. Process two opens the
+        // same mounted path, which is the only allowed production replica.
+        let first = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .unwrap();
+        setup(&first).await.unwrap();
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash(&token))
+            .bind("now")
+            .execute(&first)
+            .await
+            .unwrap();
+        first.close().await;
+
+        let restarted = App {
+            db: SqlitePoolOptions::new()
+                .max_connections(1)
+                .connect(&url)
+                .await
+                .unwrap(),
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        assert!(workspace_id(&bearer(&token), &restarted).await.is_ok());
+        let router = Router::new()
+            .route("/api/watches", get(list_watches))
+            .layer(middleware::from_fn_with_state(
+                restarted.clone(),
+                rate_limit,
+            ))
+            .with_state(restarted.clone());
+        let mut allowed = 0;
+        let mut limited = 0;
+        for _ in 0..80 {
+            let mut request = Request::builder()
+                .uri("/api/watches")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            request.headers_mut().extend(bearer(&token));
+            request
+                .headers_mut()
+                .insert("x-forwarded-for", "198.51.100.88".parse().unwrap());
+            let response = router.clone().oneshot(request).await.unwrap();
+            match response.status() {
+                StatusCode::OK => allowed += 1,
+                StatusCode::TOO_MANY_REQUESTS => {
+                    limited += 1;
+                    assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "1");
+                }
+                status => panic!("unexpected response after restart: {status}"),
+            }
+        }
+        assert_eq!((allowed, limited), (40, 40));
+        restarted.db.close().await;
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[tokio::test]
@@ -1508,7 +1577,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("icw-cli-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(root.join("feed.xml"), "<rss><channel><item><title><![CDATA[Webhook update]]></title><description><![CDATA[<p>Move webhook fixture</p>]]></description><link>https://example.com/notice</link></item></channel></rss>").unwrap();
-        std::fs::write(root.join("watches.json"), r#"{"watches":[{"vendor":"Example","url":"feed.xml","keywords":"webhook","owner":"Maya","version":"","command":"npm test"}]}"#).unwrap();
+        std::fs::write(root.join("watches.json"), r#"{"watches":[{"vendor":"Example","url":"feed.xml","keywords":"webhook","owner":"Maya","version":"example-sdk 4.2","command":"npm test"}]}"#).unwrap();
         let config = root.join("watches.json");
         cli_scan(config.to_str().unwrap()).await.unwrap();
         let state = read_cli_state(&root.join(".integration-changelog-watch")).unwrap();
@@ -1521,6 +1590,8 @@ mod tests {
         let card = std::fs::read_to_string(card_path).unwrap();
         assert!(card.contains("# Webhook update"));
         assert!(card.contains("Move webhook fixture"));
+        assert!(card.contains("**Affected dependency:** example-sdk 4.2"));
+        assert!(card.contains("**Status:** Needs acknowledgement"));
         assert!(!card.contains("CDATA"));
         cli_scan(config.to_str().unwrap()).await.unwrap();
         assert_eq!(
