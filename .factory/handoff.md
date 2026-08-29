@@ -46,7 +46,19 @@ Artifacts are in `.factory/qa-artifacts/repair-12/`.
 
 ## Deployment
 
-Use `deploy/deploy-repair.sh`. It builds the current Git commit in ACR, keeps one replica, mounts Azure Files at `/data`, sends only the product's existing runtime configuration, preserves the custom domain, and reports the source commit from `/health` and the footer. Post-deploy checks must run the isolated live limiter probe only after ordinary browser checks because it deliberately exhausts a bucket.
+`deploy/deploy-repair.sh` built and deployed product commit `127c58be080c62cf508bf9a630563f18aecf7992` through ACR build `ch13d`. Image `sociobotregistry.azurecr.io/sf-integration-changelog-watch:127c58be080c` has digest `sha256:5dbe36829b355c9c528f548af815f98b6ea74e833bf0605079dfb0dbc9b54fe0`.
+
+Live evidence on the product domain:
+
+- `/health` returned `200` with `{"build":"127c58be080c62cf508bf9a630563f18aecf7992","ok":true}`.
+- Revision `sf-integration-changelog-watch--0000051` was healthy, ready, and received 100% traffic.
+- Azure reported `minReplicas: 1`, `maxReplicas: 1`, and Azure Files volume `workspace-data` mounted at `/data`.
+- The final full live browser run passed 63 tests with the same 3 intentional skips.
+- The isolated live spoof probe passed on the Azure hostname and product domain: 80 requests with rotating caller-controlled prefixes produced 40 authorized-path responses and 40 `429` responses with `Retry-After: 1`; the following health request remained `200`.
+- The live URL verifier passed in 577 ms with no console errors and all title, language, landmark, alt-text, and control-name checks satisfied.
+- The first deployment probe also served its purpose: it showed that ACA's socket peer is public. The final repair therefore uses the platform-injected app identity—not a private-peer heuristic—to decide when Azure's documented rightmost forwarded hop is trusted.
+
+This handoff-only follow-up does not change Docker image inputs. The deployment script is run again after the handoff commit so live `/health` matches the final repository head.
 
 ## Applicability and known gaps
 
