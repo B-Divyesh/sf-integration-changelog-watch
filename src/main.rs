@@ -41,6 +41,8 @@ struct RateBucket {
     refreshed: std::time::Instant,
 }
 
+const RATE_BUCKET_IDLE_TTL: Duration = Duration::from_secs(15 * 60);
+
 #[derive(Debug, Serialize, FromRow)]
 struct Watch {
     id: i64,
@@ -1124,8 +1126,29 @@ fn internal(_: sqlx::Error) -> ApiError {
     )
 }
 
-/// The factory ingress sanitizes `X-Forwarded-For`; its first hop is the client.
-/// Later values describe proxies and cannot select a different bucket.
+/// Azure Container Apps appends the network client address to X-Forwarded-For.
+/// Earlier values are supplied by the caller and must never choose a bucket.
+/// Only accept that appended, rightmost hop when the TCP peer is the private
+/// Container Apps ingress. Direct connections use their socket peer instead.
+fn rate_limit_client_ip(headers: &HeaderMap, socket_peer: IpAddr) -> IpAddr {
+    let trusted_ingress = match socket_peer {
+        IpAddr::V4(address) => address.is_private() || address.is_loopback(),
+        IpAddr::V6(address) => {
+            address.is_unique_local() || address.is_unicast_link_local() || address.is_loopback()
+        }
+    };
+    if !trusted_ingress {
+        return socket_peer;
+    }
+    headers
+        .get("x-forwarded-for")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.rsplit(',').next())
+        .map(str::trim)
+        .and_then(|value| value.parse::<IpAddr>().ok())
+        .unwrap_or(socket_peer)
+}
+
 async fn rate_limit(
     State(app): State<App>,
     request: Request<axum::body::Body>,
@@ -1137,17 +1160,16 @@ async fn rate_limit(
         .map(|peer| peer.0.ip())
         // This fallback keeps a direct unit/router invocation bounded as well.
         .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
-    let client_ip = request
-        .headers()
-        .get("x-forwarded-for")
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(',').next())
-        .map(str::trim)
-        .and_then(|value| value.parse::<IpAddr>().ok())
-        .unwrap_or(socket_peer);
+    let client_ip = rate_limit_client_ip(request.headers(), socket_peer);
     let now = std::time::Instant::now();
     let retry_after = {
         let mut buckets = app.limiter.lock().expect("rate limiter mutex");
+        // A forged leftmost XFF value used to create a permanently retained
+        // bucket for each request. Buckets are only needed while they retain
+        // rate state, so release inactive clients on the next API request.
+        buckets.retain(|_, bucket| {
+            now.saturating_duration_since(bucket.refreshed) <= RATE_BUCKET_IDLE_TTL
+        });
         let bucket = buckets.entry(client_ip).or_insert(RateBucket {
             tokens: 40.0,
             refreshed: now,
@@ -1696,7 +1718,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ingress_client_ip_shares_one_bucket_across_connections_and_ignores_later_hops() {
+    async fn azure_ingress_uses_the_appended_rightmost_hop_and_rejects_spoofed_prefixes() {
         let db = SqlitePoolOptions::new()
             .max_connections(1)
             .connect("sqlite::memory:")
@@ -1719,16 +1741,15 @@ mod tests {
                 .unwrap();
             request.headers_mut().insert(
                 "x-forwarded-for",
-                format!("198.51.100.77, 192.0.2.{request_number}")
+                // ACA appends the actual network client on the right. A
+                // caller controls only this changing left-side value.
+                format!("203.0.113.{request_number}, 198.51.100.77")
                     .parse()
                     .unwrap(),
             );
             request
                 .extensions_mut()
-                .insert(ConnectInfo(SocketAddr::from((
-                    [10, 0, 0, request_number],
-                    4567,
-                ))));
+                .insert(ConnectInfo(SocketAddr::from(([10, 0, 0, 12], 4567))));
             let response = app.clone().oneshot(request).await.unwrap();
             if response.status().is_success() {
                 allowed += 1;
@@ -1739,6 +1760,86 @@ mod tests {
             }
         }
         assert_eq!((allowed, limited), (40, 40));
+    }
+
+    #[tokio::test]
+    async fn direct_peer_ignores_caller_supplied_forwarding_headers() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let state = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let app = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(state, rate_limit));
+        let mut allowed = 0;
+        let mut limited = 0;
+        for request_number in 0..80 {
+            let mut request = Request::builder()
+                .uri("/")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            request.headers_mut().insert(
+                "x-forwarded-for",
+                format!("203.0.113.{request_number}").parse().unwrap(),
+            );
+            request
+                .extensions_mut()
+                .insert(ConnectInfo(SocketAddr::from(([198, 51, 100, 40], 4567))));
+            let response = app.clone().oneshot(request).await.unwrap();
+            if response.status().is_success() {
+                allowed += 1;
+            } else {
+                limited += 1;
+                assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+                assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "1");
+            }
+        }
+        assert_eq!((allowed, limited), (40, 40));
+    }
+
+    #[tokio::test]
+    async fn rate_limiter_evicts_idle_client_buckets() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let state = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let stale: IpAddr = "198.51.100.41".parse().unwrap();
+        let active: IpAddr = "198.51.100.42".parse().unwrap();
+        state.limiter.lock().unwrap().insert(
+            stale,
+            RateBucket {
+                tokens: 1.0,
+                refreshed: std::time::Instant::now()
+                    - RATE_BUCKET_IDLE_TTL
+                    - Duration::from_secs(1),
+            },
+        );
+        let app = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(state.clone(), rate_limit));
+        let mut request = Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        request
+            .extensions_mut()
+            .insert(ConnectInfo(SocketAddr::from(([198, 51, 100, 42], 4567))));
+        assert_eq!(app.oneshot(request).await.unwrap().status(), StatusCode::OK);
+        let buckets = state.limiter.lock().unwrap();
+        assert!(!buckets.contains_key(&stale));
+        assert!(buckets.contains_key(&active));
     }
 
     #[test]
