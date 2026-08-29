@@ -1126,10 +1126,11 @@ fn internal(_: sqlx::Error) -> ApiError {
     )
 }
 
-/// Azure Container Apps appends the network client address to X-Forwarded-For.
-/// Earlier values are supplied by the caller and must never choose a bucket.
-/// Only accept that appended, rightmost hop when the TCP peer is the private
-/// Container Apps ingress. Direct connections use their socket peer instead.
+/// Azure Container Apps appends the network client address as the final
+/// X-Forwarded-For header value. Earlier header values and earlier hops are
+/// supplied by the caller and must never choose a bucket. Only accept that
+/// final, rightmost hop when the TCP peer is the private Container Apps
+/// ingress. Direct connections use their socket peer instead.
 fn rate_limit_client_ip(headers: &HeaderMap, socket_peer: IpAddr) -> IpAddr {
     let trusted_ingress = match socket_peer {
         IpAddr::V4(address) => address.is_private() || address.is_loopback(),
@@ -1141,8 +1142,13 @@ fn rate_limit_client_ip(headers: &HeaderMap, socket_peer: IpAddr) -> IpAddr {
         return socket_peer;
     }
     headers
-        .get("x-forwarded-for")
-        .and_then(|value| value.to_str().ok())
+        // HeaderMap::get returns the first duplicate value. ACA preserves a
+        // caller's value and appends its trusted value as a second line, so
+        // choose the last header value before reading its rightmost hop.
+        .get_all("x-forwarded-for")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .last()
         .and_then(|value| value.rsplit(',').next())
         .map(str::trim)
         .and_then(|value| value.parse::<IpAddr>().ok())
@@ -1739,13 +1745,15 @@ mod tests {
                 .uri("/")
                 .body(axum::body::Body::empty())
                 .unwrap();
-            request.headers_mut().insert(
+            request.headers_mut().append(
                 "x-forwarded-for",
-                // ACA appends the actual network client on the right. A
-                // caller controls only this changing left-side value.
-                format!("203.0.113.{request_number}, 198.51.100.77")
-                    .parse()
-                    .unwrap(),
+                // The caller controls this initial header value.
+                format!("203.0.113.{request_number}").parse().unwrap(),
+            );
+            request.headers_mut().append(
+                "x-forwarded-for",
+                // ACA's appended duplicate header is the trusted client.
+                "198.51.100.77".parse().unwrap(),
             );
             request
                 .extensions_mut()
