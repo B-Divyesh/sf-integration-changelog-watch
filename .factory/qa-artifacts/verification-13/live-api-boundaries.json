@@ -1,0 +1,61 @@
+{
+  "boundaries": {
+    "workspaceStatus": 201,
+    "acceptedStatus": 201,
+    "tooLong": {
+      "status": 400,
+      "body": "The vendor is too long. Keep it to 120 characters or fewer."
+    },
+    "malformed": {
+      "status": 400,
+      "body": "Enter a complete public http or https URL."
+    },
+    "privateUrl": {
+      "status": 400,
+      "body": "Use a public internet address; private, loopback, and link-local networks are blocked."
+    },
+    "blankOwner": {
+      "status": 400,
+      "body": "Provide a vendor, public URL, keywords, owner, and check command."
+    }
+  },
+  "watchLimit": [
+    {
+      "status": 201,
+      "body": "Vendor 1"
+    },
+    {
+      "status": 201,
+      "body": "Vendor 2"
+    },
+    {
+      "status": 201,
+      "body": "Vendor 3"
+    },
+    {
+      "status": 409,
+      "body": "This workspace already has three watches. Edit an existing watch before adding another."
+    }
+  ],
+  "isolation": {
+    "created": 201,
+    "firstCount": 1,
+    "secondCount": 0,
+    "anonymous": 401
+  },
+  "importRecovery": {
+    "rejected": {
+      "status": 400,
+      "body": "Use a public internet address; private, loopback, and link-local networks are blocked."
+    },
+    "afterStatus": 200,
+    "afterVendors": [
+      "Keep me"
+    ]
+  },
+  "parallelReads": {
+    "counts": {
+      "200": 24
+    }
+  }
+}

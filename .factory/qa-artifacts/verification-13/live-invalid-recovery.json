@@ -1,0 +1,6 @@
+{
+  "bad": 400,
+  "badNotice": "This watch was not saved. Enter a complete public http or https URL.",
+  "good": 201,
+  "goodNotice": "Saved Recovery feed. Scan it when you are ready."
+}

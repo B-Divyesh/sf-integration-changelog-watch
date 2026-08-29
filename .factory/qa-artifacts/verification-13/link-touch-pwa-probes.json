@@ -1,0 +1,306 @@
+{
+  "routes": {
+    "/": {
+      "title": "Integration Changelog Watch — Assign vendor changes",
+      "h1": [
+        "Turn vendor changes into assigned action cards"
+      ],
+      "hrefs": [
+        {
+          "text": "Skip to content",
+          "href": "https://integration-changelog-watch.sociobot.in/#main",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "▰ Changelog Watch",
+          "href": "https://integration-changelog-watch.sociobot.in/",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Demo",
+          "href": "https://integration-changelog-watch.sociobot.in/demo",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "How it works",
+          "href": "https://integration-changelog-watch.sociobot.in/#how",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Terms",
+          "href": "https://integration-changelog-watch.sociobot.in/terms",
+          "target": "",
+          "rel": ""
+        }
+      ],
+      "smallTargets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "width": 121.5,
+          "height": 24
+        }
+      ],
+      "overflow": {
+        "client": 390,
+        "scroll": 390
+      }
+    },
+    "/demo": {
+      "title": "Demo — Integration Changelog Watch",
+      "h1": [
+        "Sample action cards"
+      ],
+      "hrefs": [
+        {
+          "text": "Skip to content",
+          "href": "https://integration-changelog-watch.sociobot.in/demo#main",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "▰ Changelog Watch",
+          "href": "https://integration-changelog-watch.sociobot.in/",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Demo",
+          "href": "https://integration-changelog-watch.sociobot.in/demo",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "How it works",
+          "href": "https://integration-changelog-watch.sociobot.in/#how",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Open vendor notice (opens in a new tab)",
+          "href": "https://docs.stripe.com/changelog",
+          "target": "_blank",
+          "rel": "noreferrer"
+        },
+        {
+          "text": "Open vendor notice (opens in a new tab)",
+          "href": "https://auth0.com/changelog",
+          "target": "_blank",
+          "rel": "noreferrer"
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Terms",
+          "href": "https://integration-changelog-watch.sociobot.in/terms",
+          "target": "",
+          "rel": ""
+        }
+      ],
+      "smallTargets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "width": 121.5,
+          "height": 24
+        }
+      ],
+      "overflow": {
+        "client": 390,
+        "scroll": 390
+      }
+    },
+    "/privacy": {
+      "title": "Privacy — Integration Changelog Watch",
+      "h1": [
+        "Privacy for Integration Changelog Watch"
+      ],
+      "hrefs": [
+        {
+          "text": "Skip to content",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy#main",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "▰ Changelog Watch",
+          "href": "https://integration-changelog-watch.sociobot.in/",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Demo",
+          "href": "https://integration-changelog-watch.sociobot.in/demo",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "How it works",
+          "href": "https://integration-changelog-watch.sociobot.in/#how",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Return home",
+          "href": "https://integration-changelog-watch.sociobot.in/",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Terms",
+          "href": "https://integration-changelog-watch.sociobot.in/terms",
+          "target": "",
+          "rel": ""
+        }
+      ],
+      "smallTargets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "width": 121.5,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Return home",
+          "width": 103.5,
+          "height": 19
+        }
+      ],
+      "overflow": {
+        "client": 390,
+        "scroll": 390
+      }
+    },
+    "/terms": {
+      "title": "Terms — Integration Changelog Watch",
+      "h1": [
+        "Terms for Integration Changelog Watch"
+      ],
+      "hrefs": [
+        {
+          "text": "Skip to content",
+          "href": "https://integration-changelog-watch.sociobot.in/terms#main",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "▰ Changelog Watch",
+          "href": "https://integration-changelog-watch.sociobot.in/",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Demo",
+          "href": "https://integration-changelog-watch.sociobot.in/demo",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "How it works",
+          "href": "https://integration-changelog-watch.sociobot.in/#how",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Return home",
+          "href": "https://integration-changelog-watch.sociobot.in/",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Privacy",
+          "href": "https://integration-changelog-watch.sociobot.in/privacy",
+          "target": "",
+          "rel": ""
+        },
+        {
+          "text": "Terms",
+          "href": "https://integration-changelog-watch.sociobot.in/terms",
+          "target": "",
+          "rel": ""
+        }
+      ],
+      "smallTargets": [
+        {
+          "tag": "A",
+          "text": "Skip to content",
+          "width": 121.5,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Return home",
+          "width": 103.5,
+          "height": 19
+        }
+      ],
+      "overflow": {
+        "client": 390,
+        "scroll": 390
+      }
+    }
+  },
+  "links": [
+    "https://integration-changelog-watch.sociobot.in/#main",
+    "https://integration-changelog-watch.sociobot.in/",
+    "https://integration-changelog-watch.sociobot.in/demo",
+    "https://integration-changelog-watch.sociobot.in/#how",
+    "https://integration-changelog-watch.sociobot.in/privacy",
+    "https://integration-changelog-watch.sociobot.in/terms",
+    "https://integration-changelog-watch.sociobot.in/demo#main",
+    "https://docs.stripe.com/changelog",
+    "https://auth0.com/changelog",
+    "https://integration-changelog-watch.sociobot.in/privacy#main",
+    "https://integration-changelog-watch.sociobot.in/terms#main"
+  ],
+  "serviceWorkers": {
+    "controller": false,
+    "registrations": 0
+  },
+  "manifest": 0
+}

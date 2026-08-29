@@ -1,0 +1,115 @@
+{
+  "invalidNotice": "",
+  "savedNotice": "Saved Stripe Node. Scan it when you are ready.",
+  "scanNotice": "Scan complete. 7 new action card(s).",
+  "cards": 7,
+  "card": {
+    "title": "v22.4.0",
+    "text": "Matched “API version” · 2026-08-29T12:17:40.221784620+00:00\n\nNeeds acknowledgement\nv22.4.0\n\nThis release changes the pinned API version to 2026-07-29.dahlia. #2795 Update generated code Add support for new resource FinancialConnections.Authorization Add support for unreject method on resource Account Add support for list method on resource PaymentRecord Add support for administrative_address and principal_place_of_business on Account.company , AccountCreateParams.company , AccountUpdateParams.company , and\n\nOwner\nMaya · Payments\nAffected dependency\nstripe-node 16.2\nCheck\npnpm test:stripe\nOpen vendor notice\n(opens in a new tab)\nAcknowledge action",
+    "vendorHref": "https://github.com/stripe/stripe-node/releases/tag/v22.4.0"
+  },
+  "ackNotice": "Scan complete. 7 new action card(s).",
+  "secondScanNotice": "Scan complete. 0 new action card(s).",
+  "removeNotice": "Removed Stripe Node. You can add another watch.",
+  "api": [
+    {
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/watches",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/actions",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/watches",
+      "status": 400
+    },
+    {
+      "method": "POST",
+      "path": "/api/watches",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/actions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/watches",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/scan",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/watches",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/actions",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/actions/7",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/actions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/watches",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/scan",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/watches",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/actions",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/watches/87",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/watches",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/actions",
+      "status": 200
+    }
+  ],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 400 ()"
+  ],
+  "pageErrors": []
+}

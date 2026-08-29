@@ -1,0 +1,40 @@
+{
+  "elapsedMs": 395,
+  "counts": {
+    "401": 40,
+    "429": 40
+  },
+  "limited": [
+    {
+      "index": 2,
+      "status": 429,
+      "retryAfter": "1",
+      "body": "Too many requests. Try again in 1 second(s)."
+    },
+    {
+      "index": 5,
+      "status": 429,
+      "retryAfter": "1",
+      "body": "Too many requests. Try again in 1 second(s)."
+    },
+    {
+      "index": 23,
+      "status": 429,
+      "retryAfter": "1",
+      "body": "Too many requests. Try again in 1 second(s)."
+    },
+    {
+      "index": 25,
+      "status": 429,
+      "retryAfter": "1",
+      "body": "Too many requests. Try again in 1 second(s)."
+    },
+    {
+      "index": 27,
+      "status": 429,
+      "retryAfter": "1",
+      "body": "Too many requests. Try again in 1 second(s)."
+    }
+  ],
+  "missingRetryAfter": 0
+}

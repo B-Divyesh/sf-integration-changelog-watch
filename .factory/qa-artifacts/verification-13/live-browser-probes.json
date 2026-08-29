@@ -1,0 +1,108 @@
+{
+  "desktop": {
+    "first": {
+      "title": "Integration Changelog Watch — Assign vendor changes",
+      "h1": "Turn vendor changes into assigned action cards",
+      "intro": "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+      "heroButton": "Try it with sample data",
+      "heroButtonVisible": true,
+      "heroButtonInViewport": true,
+      "h1Count": 1,
+      "mainCount": 1,
+      "lang": "en",
+      "overflow": {
+        "client": 1440,
+        "scroll": 1440
+      }
+    },
+    "clickReachedDemo": true,
+    "banner": true,
+    "firstCard": {
+      "title": "Stripe retires legacy webhook event format",
+      "owner": "Maya · Payments",
+      "version": "stripe-node 16.2",
+      "check": "pnpm test:stripe"
+    },
+    "demoApiRequests": [],
+    "requests": [
+      "https://integration-changelog-watch.sociobot.in/demo",
+      "https://integration-changelog-watch.sociobot.in/assets/index-Bfbb_kIh.js",
+      "https://integration-changelog-watch.sociobot.in/assets/index-DfDEtPLZ.css"
+    ],
+    "consoleErrors": [],
+    "pageErrors": [],
+    "skipFocused": true,
+    "focusStyle": {
+      "outline": "rgb(40, 79, 122) dashed 3px",
+      "outlineColor": "rgb(40, 79, 122)",
+      "outlineWidth": "3px"
+    },
+    "motion": {
+      "transitionDuration": "0s",
+      "animationDuration": "0s",
+      "transform": "none"
+    },
+    "axeViolations": [],
+    "storage": {
+      "keys": [],
+      "cookies": "",
+      "overflow": {
+        "client": 1440,
+        "scroll": 1440
+      }
+    }
+  },
+  "mobile": {
+    "first": {
+      "title": "Integration Changelog Watch — Assign vendor changes",
+      "h1": "Turn vendor changes into assigned action cards",
+      "intro": "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+      "heroButton": "Try it with sample data",
+      "heroButtonVisible": true,
+      "heroButtonInViewport": true,
+      "h1Count": 1,
+      "mainCount": 1,
+      "lang": "en",
+      "overflow": {
+        "client": 390,
+        "scroll": 390
+      }
+    },
+    "clickReachedDemo": true,
+    "banner": true,
+    "firstCard": {
+      "title": "Stripe retires legacy webhook event format",
+      "owner": "Maya · Payments",
+      "version": "stripe-node 16.2",
+      "check": "pnpm test:stripe"
+    },
+    "demoApiRequests": [],
+    "requests": [
+      "https://integration-changelog-watch.sociobot.in/demo",
+      "https://integration-changelog-watch.sociobot.in/assets/index-Bfbb_kIh.js",
+      "https://integration-changelog-watch.sociobot.in/assets/index-DfDEtPLZ.css"
+    ],
+    "consoleErrors": [],
+    "pageErrors": [],
+    "skipFocused": true,
+    "focusStyle": {
+      "outline": "rgb(40, 79, 122) dashed 3px",
+      "outlineColor": "rgb(40, 79, 122)",
+      "outlineWidth": "3px"
+    },
+    "motion": {
+      "transitionDuration": "0s",
+      "animationDuration": "0s",
+      "transform": "none"
+    },
+    "axeViolations": [],
+    "storage": {
+      "keys": [],
+      "cookies": "",
+      "overflow": {
+        "client": 390,
+        "scroll": 390
+      }
+    }
+  }
+}
