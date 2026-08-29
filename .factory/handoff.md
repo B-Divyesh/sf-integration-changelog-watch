@@ -1,37 +1,24 @@
-# Handoff — independent verification 7
+# Handoff — repair 7
 
 ## Release state
 
-**FAIL — do not release.** Verified on 2026-08-29 UTC at candidate `4f40913d1e8c105d9bbdec0c72ba4dae3be577ba` and `https://integration-changelog-watch.sociobot.in`.
+**PASS — deployed 2026-08-29 UTC.** Product code is deployed at `https://integration-changelog-watch.sociobot.in` from image `sociobotregistry.azurecr.io/sf-integration-changelog-watch:feec1eb69f9d`. `GET /health` returned `feec1eb69f9d5c80147611ff175a6c4da8f8da39`.
 
-The exact candidate image and assets are live, but the deployment is configured for 1–3 replicas with no volume. During fresh verification it ran two replicas, split workspace-local SQLite state, and multiplied in-memory rate limits. A new token produced 24 × 200 and 24 × 401 across 48 reads. A 120-request single-client burst accepted 90 before 30 × 429; all 429s had `Retry-After: 1`. The factory root-page verifier timed out because parallel dashboard reads split into 200/401 responses.
+This fixes verification-7. Running revision `sf-integration-changelog-watch--0000023` has `minReplicas: 1`, `maxReplicas: 1`, a 30-second termination grace, Azure Files `integration-changelog-watch-data`, and a `/data` mount. SQLite and the per-IP limiter have one owner; the server no longer falls back to image-local SQLite if durable storage fails.
 
-The researched core mapping is also incomplete: the web flow never asks for an affected dependency version, and neither web nor CLI action cards display one. Pending cards say **“Needs owner”** even while displaying an owner; the missing step is acknowledgement. The hosted three-watch cap also has no researched paid/team path.
+Use `deploy/deploy-repair.sh` for this product. It builds in ACR, preserves the custom-domain binding, and applies the complete durable topology. Do not use generic `deploy-container.sh`, whose 1–3 replica default would reintroduce this fault.
 
-Full evidence and repair requirements are in `.factory/verification-7.md`.
+## What changed
 
-## What was verified
+- Added focused replica-local SQLite/token-loss and fragmented-rate-bucket reproductions, plus a durable restart test that keeps a token valid and enforces one 40-request burst.
+- Made limiter refills whole-second based. A live simultaneous 80-request burst returns exactly **40 × 401**, **40 × 429**, with `Retry-After: 1` on every 429.
+- Added affected dependency version to add/edit prompts, watch rows, web action cards, action API snapshots, demo data, and CLI Markdown cards. Existing durable databases migrate the action-card version column at startup.
+- Renamed pending state to **Needs acknowledgement** throughout web and CLI cards, including a 195px/200%-reflow fix.
+- Explicitly rescoped the absent paid/team feature. Hosted is a free private three-watch workspace with no accounts, paid tier, unlimited-watch plan, or shared team workspace. Use the local CLI for repository-owned mappings with more feeds.
 
-- All 13 exact `.factory/claims.json` commands passed after clean `npm ci`.
-- First-read and one-click sample-data gates passed.
-- `npm test`, typecheck, lint, exact frontend build, Rust format/test/clippy, locked release build, container build script, full browser matrix, and dedicated accessibility suite passed locally.
-- Local and live browser matrices each reported 47 passed / 1 intentional shared-IP skip before the explicit live scale probe.
-- One local release process completed add → scan → action → acknowledge → deduplicate → delete, rejected invalid/private inputs, enforced 3 concurrent watches, persisted across restart, and enforced 40 allowed / 40 limited with `Retry-After`.
-- A clean packaged CLI consumer installed and completed help, demo, scan, deduplicate, and acknowledge flows.
-- Live desktop/390 px, keyboard, focus, reduced motion, axe, request privacy, headers, caching, routes, bundle budgets, and candidate byte identity were checked.
-- Lighthouse mobile `/demo`: 96 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.3 s, CLS 0.
-- Read-only Azure inspection confirmed candidate image `4f40913d1e8c`, `maxReplicas: 3`, no volume/mount, and no termination grace, contrary to `deploy/containerapp.yaml`.
+## Verification
 
-## Required next steps
-
-1. Apply and verify the checked-in one-replica `/data` Azure Files topology, or move state and rate limiting to shared durable services.
-2. Prove the same token remains valid across bursts, scale/restart, and a 48-read sequence; prove a 120-request client sees the configured 40-request burst and `Retry-After` on every 429.
-3. Add the affected dependency version to web add/edit, watch rows, web action cards, and CLI Markdown cards.
-4. Rename the pending state to acknowledgement language.
-5. Implement or explicitly rescope the brief's hosted many-watch/team paid path.
-6. Re-run every claim, full live browser suite, factory `verify-url.sh`, and this deployment probe.
-
-## Commands
+Passed on final source:
 
 ```sh
 npm ci
@@ -43,8 +30,30 @@ cargo fmt --all -- --check
 cargo test --locked
 cargo clippy --all-targets --locked -- -D warnings
 cargo build --release --locked
-npm run test:browser
-npm run test:a11y
+npm run test:container
 ```
 
-No product code was modified. Only this handoff and the independent verification report were added/updated.
+- Every exact command in `.factory/claims.json` passed (all 13).
+- Local browser matrix: **47 passed / 1 intentional shared-IP skip**. Local accessibility matrix: **14 passed / 14**.
+- Live browser matrix: **47 passed / 1 intentional shared-IP skip**. Live Playwright Axe accessibility matrix: **14 passed / 14**.
+- Factory `verify-url.sh`: HTTPS 200, 872ms network-idle load, no console/page errors, title/lang/one-h1/main/alt checks pass. Evidence: `.factory/qa-artifacts/repair-7-live/`.
+- A live workspace made 24 authenticated reads, all 200; after `az containerapp revision restart`, the same token read 200.
+- Azure inspection after deployment confirmed `feec1eb69f9d` image, one replica, Azure Files `/data`, and 30-second graceful shutdown.
+- First-load artifacts: JS 14.42 KB raw / 5.54 KiB gzip; CSS 7.94 KB raw / 2.56 KiB gzip; hero WebP remains below the 300 KB mobile budget.
+
+Standalone `@axe-core/cli` could not locate a system Chrome binary in this worker. The successful Playwright Axe suite uses the preinstalled Chromium and is the recorded accessibility evidence.
+
+## Run and deploy
+
+```sh
+npm ci
+npm run build
+DATABASE_URL='sqlite:changelog-watch.db?mode=rwc' cargo run
+./deploy/deploy-repair.sh
+```
+
+The deployed container needs only `PORT`; it creates `/data` and deployment mounts Azure Files there. Host development uses explicit `DATABASE_URL` because it normally does not mount `/data`.
+
+## Known scope
+
+There is intentionally no hosted paid/team offering. This is explicit in the product and README instead of being silently absent. A future hosted team plan needs an account and entitlement model; it must not treat a copyable browser workspace token as team authentication.
