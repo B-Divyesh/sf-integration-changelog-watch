@@ -11,6 +11,25 @@ test('@claim:sample-action-cards opens the seeded demo workspace', async ({ page
   await expect(page.getByText('pnpm test:stripe')).toBeVisible()
 })
 
+test('an in-flight real workspace hydration cannot overwrite the demo sample', async ({ page }) => {
+  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'f'.repeat(64) }) }))
+  let releaseRead!: () => void
+  const delayedRead = new Promise<void>(resolve => { releaseRead = resolve })
+  for (const path of ['**/api/watches', '**/api/actions']) {
+    await page.route(path, async route => {
+      await delayedRead
+      await route.fulfill({ contentType: 'application/json', body: '[]' })
+    })
+  }
+  const watchesRequested = page.waitForRequest('**/api/watches')
+  await page.goto('/')
+  await watchesRequested
+  await page.getByRole('button', { name: 'Try it with sample data' }).click()
+  releaseRead()
+  await expect(page.getByRole('heading', { name: /action needs an owner/i })).toBeVisible()
+  await expect(page.getByText('Maya · Payments').first()).toBeVisible()
+})
+
 test('@claim:csv-export downloads one row per demo action', async ({ page }) => {
   await page.goto('/demo')
   const download = page.waitForEvent('download')

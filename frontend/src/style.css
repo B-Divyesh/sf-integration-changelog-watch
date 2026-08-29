@@ -611,6 +611,9 @@ footer a {
   #license {
     min-width: 0;
   }
+  footer p {
+    overflow-wrap: anywhere;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

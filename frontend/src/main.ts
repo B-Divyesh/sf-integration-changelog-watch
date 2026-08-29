@@ -63,11 +63,15 @@ async function hydrateReal() {
   try {
     const [watchResponse, actionResponse] = await Promise.all([api('/api/watches'), api('/api/actions')])
     if (!watchResponse.ok || !actionResponse.ok) throw new Error('Could not load this workspace.')
+    // A visitor can enter the demo while these real-workspace reads are in
+    // flight. Never let their late response overwrite demo sample storage.
+    if (demo) return
     watches = await watchResponse.json() as Watch[]
     actions = await actionResponse.json() as Action[]
-    save()
+    localStorage.setItem(realKey, JSON.stringify({ watches, actions }))
     render()
   } catch {
+    if (demo) return
     statusMessage = 'Your private workspace could not load. Check your connection, then reload.'
     const notice = document.querySelector<HTMLElement>('#notice')
     if (notice) notice.textContent = statusMessage
