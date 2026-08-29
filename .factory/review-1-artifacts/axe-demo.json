@@ -1,0 +1,16 @@
+[
+  {
+    "id": "landmark-complementary-is-top-level",
+    "impact": "moderate",
+    "help": "Aside should not be contained in another landmark",
+    "nodes": [
+      {
+        "target": [
+          ".watches"
+        ],
+        "html": "<aside class=\"watches\" aria-label=\"Watched feeds\">",
+        "failure": "Fix any of the following:\n  The complementary landmark is contained in another landmark."
+      }
+    ]
+  }
+]

@@ -1,0 +1,201 @@
+{
+  "pre": {
+    "icw:workspace": "{\"watches\":[],\"actions\":[]}",
+    "icw:workspace-token": "[REDACTED]"
+  },
+  "first": {
+    "url": "https://integration-changelog-watch.sociobot.in/demo",
+    "scrollY": 0,
+    "storage": {
+      "icw:workspace": "{\"watches\":[],\"actions\":[]}",
+      "icw:workspace-token": "[REDACTED]"
+    },
+    "banner": [
+      "Demo — sample data, nothing is saved Reset demoStart for real"
+    ],
+    "visible": [
+      {
+        "tag": "a",
+        "text": "Skip to content",
+        "top": 0,
+        "bottom": 24
+      },
+      {
+        "tag": "span",
+        "text": "▰",
+        "top": 25,
+        "bottom": 49
+      },
+      {
+        "tag": "a",
+        "text": "Demo",
+        "top": 15,
+        "bottom": 59
+      },
+      {
+        "tag": "a",
+        "text": "How it works",
+        "top": 15,
+        "bottom": 59
+      },
+      {
+        "tag": "a",
+        "text": "Privacy",
+        "top": 15,
+        "bottom": 59
+      },
+      {
+        "tag": "button",
+        "text": "Reset demo",
+        "top": 82,
+        "bottom": 126
+      },
+      {
+        "tag": "button",
+        "text": "Start for real",
+        "top": 82,
+        "bottom": 126
+      },
+      {
+        "tag": "p",
+        "text": "INTEGRATION CHANGELOG WATCH",
+        "top": 174,
+        "bottom": 192
+      },
+      {
+        "tag": "h1",
+        "text": "Turn vendor changes into owned actions",
+        "top": 200,
+        "bottom": 421
+      },
+      {
+        "tag": "p",
+        "text": "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+        "top": 439,
+        "bottom": 494
+      },
+      {
+        "tag": "button",
+        "text": "Try it with sample data",
+        "top": 528,
+        "bottom": 574
+      },
+      {
+        "tag": "span",
+        "text": "See matched notices, owners, versions, and checks.",
+        "top": 518,
+        "bottom": 585
+      },
+      {
+        "tag": "li",
+        "text": "Rules are written by your team.",
+        "top": 609,
+        "bottom": 631
+      },
+      {
+        "tag": "li",
+        "text": "Scans run only when you request them.",
+        "top": 636,
+        "bottom": 658
+      },
+      {
+        "tag": "li",
+        "text": "Your workspace is separated from other visitors.",
+        "top": 663,
+        "bottom": 685
+      },
+      {
+        "tag": "figcaption",
+        "text": "Original paper-cut illustration.",
+        "top": 596,
+        "bottom": 614
+      },
+      {
+        "tag": "p",
+        "text": "Your owned queue",
+        "top": 812,
+        "bottom": 830
+      },
+      {
+        "tag": "h2",
+        "text": "1 action needs acknowledgement",
+        "top": 838,
+        "bottom": 887
+      },
+      {
+        "tag": "button",
+        "text": "Scan watched feeds",
+        "top": 827,
+        "bottom": 873
+      },
+      {
+        "tag": "button",
+        "text": "Add a watch",
+        "top": 827,
+        "bottom": 873
+      }
+    ]
+  },
+  "afterAck": {
+    "icw:workspace": "{\"watches\":[],\"actions\":[]}",
+    "demo:integration-changelog-watch": "{\"watches\":[{\"id\":\"stripe\",\"vendor\":\"Stripe\",\"url\":\"https://docs.stripe.com/changelog/rss.xml\",\"keywords\":\"breaking,api version,webhook\",\"owner\":\"Maya · Payments\",\"version\":\"stripe-node 16.2\",\"command\":\"pnpm test:stripe\"},{\"id\":\"auth0\",\"vendor\":\"Auth0\",\"url\":\"https://auth0.com/changelog/rss\",\"keywords\":\"deprecation,breaking,token\",\"owner\":\"Ishan · Identity\",\"version\":\"auth0-spa-js 2.1\",\"command\":\"pnpm test:auth\"},{\"id\":\"segment\",\"vendor\":\"Segment\",\"url\":\"https://segment.com/docs/release-notes/rss.xml\",\"keywords\":\"deprecated,destination,breaking\",\"owner\":\"Nora · Data\",\"version\":\"analytics-next 1.68\",\"command\":\"pnpm test:analytics\"}],\"actions\":[{\"id\":\"a1\",\"watchId\":\"stripe\",\"title\":\"Stripe retires legacy webhook event format\",\"excerpt\":\"The legacy event shape stops after the stated migration window. Review signature parsing and event fixtures.\",\"matched\":\"webhook\",\"url\":\"https://docs.stripe.com/changelog\",\"owner\":\"Maya · Payments\",\"version\":\"stripe-node 16.2\",\"command\":\"pnpm test:stripe\",\"acknowledged\":true,\"seenAt\":\"Today\"},{\"id\":\"a2\",\"watchId\":\"auth0\",\"title\":\"Auth0 changes refresh token rotation defaults\",\"excerpt\":\"New tenants use a changed default. Check your explicit configuration before the next environment.\",\"matched\":\"token\",\"url\":\"https://auth0.com/changelog\",\"owner\":\"Ishan · Identity\",\"version\":\"auth0-spa-js 2.1\",\"command\":\"pnpm test:auth\",\"acknowledged\":true,\"seenAt\":\"Yesterday\"}]}",
+    "icw:workspace-token": "[REDACTED]"
+  },
+  "afterReset": {
+    "heading": [
+      "1 action needs acknowledgement",
+      "Give each vendor change a next step",
+      "Hosted workspace scope",
+      "What this does not do"
+    ],
+    "storage": {
+      "icw:workspace": "{\"watches\":[],\"actions\":[]}",
+      "icw:workspace-token": "[REDACTED]"
+    }
+  },
+  "afterReal": {
+    "url": "https://integration-changelog-watch.sociobot.in/",
+    "storage": {
+      "icw:workspace": "{\"watches\":[],\"actions\":[]}",
+      "icw:workspace-token": "[REDACTED]"
+    }
+  },
+  "requests": [
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/assets/index-BFdh3OIX.js",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/assets/index-DM5PYJWV.css",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/api/workspaces",
+      "method": "POST"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/paper-cut-hero.webp",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/api/watches",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/api/actions",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/api/watches",
+      "method": "GET"
+    },
+    {
+      "url": "https://integration-changelog-watch.sociobot.in/api/actions",
+      "method": "GET"
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "routes": {
+    "/": {
+      "title": "Integration Changelog Watch — Track vendor changes",
+      "lang": "en",
+      "h1": [
+        "Turn vendor changes into owned actions"
+      ],
+      "mains": 1,
+      "description": "Turn vendor release notes into owned integration actions.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/",
+      "ogTitle": "Integration Changelog Watch — Track vendor changes",
+      "ogDescription": "Turn vendor release notes into owned integration actions.",
+      "ogImage": "https://integration-changelog-watch.sociobot.in/social-card.jpg",
+      "twitterCard": "summary_large_image",
+      "favicon": "https://integration-changelog-watch.sociobot.in/favicon.svg",
+      "apple": "https://integration-changelog-watch.sociobot.in/apple-touch-icon.png",
+      "header": "▰ Changelog Watch Demo How it works Privacy",
+      "footer": "Vendor notices become owned integration actions. Privacy · Terms · Built by Param Factory · build 99f0ca341a13140030b4f50272b4b399c54cbd57",
+      "links": [
+        "https://integration-changelog-watch.sociobot.in/#main",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/demo",
+        "https://integration-changelog-watch.sociobot.in/#how",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/terms"
+      ],
+      "status": 200,
+      "consoleErrors": []
+    },
+    "/demo": {
+      "title": "Demo — Integration Changelog Watch",
+      "lang": "en",
+      "h1": [
+        "Turn vendor changes into owned actions"
+      ],
+      "mains": 1,
+      "description": "Turn vendor release notes into owned integration actions.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/demo",
+      "ogTitle": "Integration Changelog Watch — Track vendor changes",
+      "ogDescription": "Turn vendor release notes into owned integration actions.",
+      "ogImage": "https://integration-changelog-watch.sociobot.in/social-card.jpg",
+      "twitterCard": "summary_large_image",
+      "favicon": "https://integration-changelog-watch.sociobot.in/favicon.svg",
+      "apple": "https://integration-changelog-watch.sociobot.in/apple-touch-icon.png",
+      "header": "▰ Changelog Watch Demo How it works Privacy",
+      "footer": "Vendor notices become owned integration actions. Privacy · Terms · Built by Param Factory · build 99f0ca341a13140030b4f50272b4b399c54cbd57",
+      "links": [
+        "https://integration-changelog-watch.sociobot.in/demo#main",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/demo",
+        "https://integration-changelog-watch.sociobot.in/#how",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://docs.stripe.com/changelog",
+        "https://auth0.com/changelog",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/terms"
+      ],
+      "status": 200,
+      "consoleErrors": []
+    },
+    "/privacy": {
+      "title": "Privacy — Integration Changelog Watch",
+      "lang": "en",
+      "h1": [
+        "Privacy for Integration Changelog Watch"
+      ],
+      "mains": 1,
+      "description": "Turn vendor release notes into owned integration actions.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/privacy",
+      "ogTitle": "Integration Changelog Watch — Track vendor changes",
+      "ogDescription": "Turn vendor release notes into owned integration actions.",
+      "ogImage": "https://integration-changelog-watch.sociobot.in/social-card.jpg",
+      "twitterCard": "summary_large_image",
+      "favicon": "https://integration-changelog-watch.sociobot.in/favicon.svg",
+      "apple": "https://integration-changelog-watch.sociobot.in/apple-touch-icon.png",
+      "header": "▰ Changelog Watch Demo How it works Privacy",
+      "footer": "Vendor notices become owned integration actions. Privacy · Terms · Built by Param Factory · build 99f0ca341a13140030b4f50272b4b399c54cbd57",
+      "links": [
+        "https://integration-changelog-watch.sociobot.in/privacy#main",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/demo",
+        "https://integration-changelog-watch.sociobot.in/#how",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/terms"
+      ],
+      "status": 200,
+      "consoleErrors": []
+    },
+    "/terms": {
+      "title": "Terms — Integration Changelog Watch",
+      "lang": "en",
+      "h1": [
+        "Terms for Integration Changelog Watch"
+      ],
+      "mains": 1,
+      "description": "Turn vendor release notes into owned integration actions.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/terms",
+      "ogTitle": "Integration Changelog Watch — Track vendor changes",
+      "ogDescription": "Turn vendor release notes into owned integration actions.",
+      "ogImage": "https://integration-changelog-watch.sociobot.in/social-card.jpg",
+      "twitterCard": "summary_large_image",
+      "favicon": "https://integration-changelog-watch.sociobot.in/favicon.svg",
+      "apple": "https://integration-changelog-watch.sociobot.in/apple-touch-icon.png",
+      "header": "▰ Changelog Watch Demo How it works Privacy",
+      "footer": "Vendor notices become owned integration actions. Privacy · Terms · Built by Param Factory · build 99f0ca341a13140030b4f50272b4b399c54cbd57",
+      "links": [
+        "https://integration-changelog-watch.sociobot.in/terms#main",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/demo",
+        "https://integration-changelog-watch.sociobot.in/#how",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/terms"
+      ],
+      "status": 200,
+      "consoleErrors": []
+    },
+    "/not-a-real-route": {
+      "title": "Page not found — Integration Changelog Watch",
+      "lang": "en",
+      "h1": [
+        "That page is not here"
+      ],
+      "mains": 1,
+      "description": "The requested Integration Changelog Watch page was not found.",
+      "canonical": "https://integration-changelog-watch.sociobot.in/404",
+      "favicon": "https://integration-changelog-watch.sociobot.in/favicon.svg",
+      "header": "▰ Changelog Watch Demo Privacy",
+      "footer": "Vendor notices become owned integration actions. Privacy · Terms · Built by Param Factory · build 99f0ca341a13140030b4f50272b4b399c54cbd57",
+      "links": [
+        "https://integration-changelog-watch.sociobot.in/not-a-real-route#main",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/demo",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/",
+        "https://integration-changelog-watch.sociobot.in/privacy",
+        "https://integration-changelog-watch.sociobot.in/terms"
+      ],
+      "status": 404,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ]
+    }
+  },
+  "navigation": {
+    "afterPrivacy": {
+      "url": "https://integration-changelog-watch.sociobot.in/privacy",
+      "focus": "Privacy for Integration Changelog Watch",
+      "title": "Privacy — Integration Changelog Watch"
+    },
+    "afterBack": {
+      "url": "https://integration-changelog-watch.sociobot.in/",
+      "focus": "Turn vendor changes into owned actions",
+      "title": "Integration Changelog Watch — Track vendor changes"
+    },
+    "howDeepLink": {
+      "url": "https://integration-changelog-watch.sociobot.in/#how",
+      "scrollY": 1446,
+      "targetTop": 397
+    }
+  },
+  "directDemo": {
+    "requests": [
+      "https://integration-changelog-watch.sociobot.in/demo",
+      "https://integration-changelog-watch.sociobot.in/assets/index-BFdh3OIX.js",
+      "https://integration-changelog-watch.sociobot.in/assets/index-DM5PYJWV.css",
+      "https://integration-changelog-watch.sociobot.in/paper-cut-hero.webp"
+    ],
+    "storage": {}
+  }
+}

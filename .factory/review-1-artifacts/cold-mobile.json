@@ -1,0 +1,94 @@
+{
+  "url": "https://integration-changelog-watch.sociobot.in/",
+  "title": "Integration Changelog Watch — Track vendor changes",
+  "h1": [
+    "Turn vendor changes into owned actions"
+  ],
+  "scrollY": 0,
+  "viewport": [
+    390,
+    844
+  ],
+  "visible": [
+    {
+      "tag": "a",
+      "text": "Skip to content",
+      "top": 0,
+      "bottom": 24
+    },
+    {
+      "tag": "span",
+      "text": "▰",
+      "top": 27,
+      "bottom": 51
+    },
+    {
+      "tag": "a",
+      "text": "Demo",
+      "top": 16,
+      "bottom": 60
+    },
+    {
+      "tag": "a",
+      "text": "How it works",
+      "top": 16,
+      "bottom": 60
+    },
+    {
+      "tag": "a",
+      "text": "Privacy",
+      "top": 16,
+      "bottom": 60
+    },
+    {
+      "tag": "p",
+      "text": "INTEGRATION CHANGELOG WATCH",
+      "top": 92,
+      "bottom": 110
+    },
+    {
+      "tag": "h1",
+      "text": "Turn vendor changes into owned actions",
+      "top": 118,
+      "bottom": 250
+    },
+    {
+      "tag": "p",
+      "text": "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+      "top": 268,
+      "bottom": 350
+    },
+    {
+      "tag": "button",
+      "text": "Try it with sample data",
+      "top": 374,
+      "bottom": 420
+    },
+    {
+      "tag": "span",
+      "text": "See matched notices, owners, versions, and checks.",
+      "top": 434,
+      "bottom": 501
+    },
+    {
+      "tag": "li",
+      "text": "Rules are written by your team.",
+      "top": 525,
+      "bottom": 547
+    },
+    {
+      "tag": "li",
+      "text": "Scans run only when you request them.",
+      "top": 552,
+      "bottom": 574
+    },
+    {
+      "tag": "li",
+      "text": "Your workspace is separated from other visitors.",
+      "top": 579,
+      "bottom": 623
+    }
+  ],
+  "status": 200,
+  "consoleErrors": []
+}

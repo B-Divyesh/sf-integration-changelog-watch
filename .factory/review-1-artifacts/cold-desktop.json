@@ -1,0 +1,124 @@
+{
+  "url": "https://integration-changelog-watch.sociobot.in/",
+  "title": "Integration Changelog Watch — Track vendor changes",
+  "h1": [
+    "Turn vendor changes into owned actions"
+  ],
+  "scrollY": 0,
+  "viewport": [
+    1440,
+    900
+  ],
+  "visible": [
+    {
+      "tag": "a",
+      "text": "Skip to content",
+      "top": 0,
+      "bottom": 24
+    },
+    {
+      "tag": "span",
+      "text": "▰",
+      "top": 25,
+      "bottom": 49
+    },
+    {
+      "tag": "a",
+      "text": "Demo",
+      "top": 15,
+      "bottom": 59
+    },
+    {
+      "tag": "a",
+      "text": "How it works",
+      "top": 15,
+      "bottom": 59
+    },
+    {
+      "tag": "a",
+      "text": "Privacy",
+      "top": 15,
+      "bottom": 59
+    },
+    {
+      "tag": "p",
+      "text": "INTEGRATION CHANGELOG WATCH",
+      "top": 114,
+      "bottom": 132
+    },
+    {
+      "tag": "h1",
+      "text": "Turn vendor changes into owned actions",
+      "top": 140,
+      "bottom": 361
+    },
+    {
+      "tag": "p",
+      "text": "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+      "top": 379,
+      "bottom": 434
+    },
+    {
+      "tag": "button",
+      "text": "Try it with sample data",
+      "top": 468,
+      "bottom": 514
+    },
+    {
+      "tag": "span",
+      "text": "See matched notices, owners, versions, and checks.",
+      "top": 458,
+      "bottom": 525
+    },
+    {
+      "tag": "li",
+      "text": "Rules are written by your team.",
+      "top": 549,
+      "bottom": 571
+    },
+    {
+      "tag": "li",
+      "text": "Scans run only when you request them.",
+      "top": 576,
+      "bottom": 598
+    },
+    {
+      "tag": "li",
+      "text": "Your workspace is separated from other visitors.",
+      "top": 603,
+      "bottom": 625
+    },
+    {
+      "tag": "figcaption",
+      "text": "Original paper-cut illustration.",
+      "top": 536,
+      "bottom": 554
+    },
+    {
+      "tag": "p",
+      "text": "Your owned queue",
+      "top": 752,
+      "bottom": 770
+    },
+    {
+      "tag": "h2",
+      "text": "No actions need acknowledgement",
+      "top": 778,
+      "bottom": 827
+    },
+    {
+      "tag": "button",
+      "text": "Scan watched feeds",
+      "top": 767,
+      "bottom": 813
+    },
+    {
+      "tag": "button",
+      "text": "Add a watch",
+      "top": 767,
+      "bottom": 813
+    }
+  ],
+  "status": 200,
+  "consoleErrors": []
+}
