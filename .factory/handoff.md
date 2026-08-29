@@ -33,6 +33,7 @@ Live verification:
 
 - Factory `verify-url.sh` checked HTTPS 200, title, `lang`, one h1, main, image alt text, desktop/mobile screenshots, and zero console errors (883 ms load).
 - Full live Playwright: 47 passed / 1 intentional skip; live accessibility: 14 passed. This covers keyboard, 390px mobile, 195px/200% reflow, privacy, demo, and 404 identity.
+- Lighthouse mobile `/demo`: 100 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.3 s and CLS 0.
 - A fresh workspace made 48 authenticated reads with **48 × 200 and 0 × 401**. The same bearer token returned 200 after a real revision restart.
 - A 120-request single-client burst yielded **42 × 200 and 78 × 429**; every 429 had `Retry-After: 1`.
 - Azure confirms one running replica, both scale bounds at 1, `integration-changelog-watch-data` mounted at `/data`, a 30-second termination grace, and the final image/build identity above.
