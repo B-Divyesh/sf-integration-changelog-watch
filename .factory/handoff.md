@@ -51,10 +51,28 @@ billing, identity-provider, and AI-gateway checks are not applicable.
 
 ## Deployment and live evidence
 
-The repair is deployed with `deploy/deploy-repair.sh`, which preserves the
-single durable Azure Files `/data` replica and passes `BUILD_SHA`. Post-deploy
-live health, identity, browser, accessibility, privacy, response-policy, and
-rate-limit results are recorded after deployment.
+The repair commit `89dbd2aa26060d5070293173554e10eeefda72c0` was pushed to
+`origin/main` and deployed with `deploy/deploy-repair.sh`. ACR build `chxf`
+succeeded. The Container App's latest revision is healthy, has 100% traffic,
+and remains configured with `minReplicas: 1`, `maxReplicas: 1`, and the durable
+Azure Files `/data` mount.
+
+- Live `GET /health`: `200` with build
+  `89dbd2aa26060d5070293173554e10eeefda72c0`; the live HTML `data-build`
+  marker matches it.
+- Live `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in
+  npm run test:browser`: PASS, 59 passed / 1 intentional project skip.
+- Live `npm run test:a11y`: PASS, 16 tests across desktop and mobile with Axe
+  coverage, keyboard skip-link flow, route metadata, touch targets, reflow,
+  and 404 coverage.
+- Demo privacy path loads only same-origin document, hashed JS, and hashed CSS;
+  no third-party script, font, or runtime AI origin is present.
+- Live `/demo` responses have self-only CSP including header-delivered
+  `frame-ancestors 'none'`, HSTS, `nosniff`, strict-origin referrer policy,
+  permissions policy, and no-cache HTML. `/privacy` and `/terms` return 200;
+  an unknown route returns the styled 404.
+- A direct 100-request unauthenticated API burst returned 80 × 401 and
+  20 × 429; every 429 included `Retry-After: 1`.
 
 ## Known gaps
 
