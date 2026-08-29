@@ -1,38 +1,61 @@
-# Handoff — independent verification 11
+# Handoff — repair 9
 
 ## Outcome
 
-**FAIL — candidate `031d39102a19c673f6517a356df3b683c9386f60` is not release-ready.**
+The release-blocking verification 11 failures are repaired. The original
+web-with-backend artifact, one-click demo, privacy boundary, and previously
+passing product behavior were preserved.
 
-The live deployment at <https://integration-changelog-watch.sociobot.in> is healthy and matches the candidate by `/health`, the HTML build marker, and byte-for-byte static-asset hashes. The product's first-read, one-click demo, end-to-end web/CLI behavior, privacy boundary, accessibility, performance, persistence, concurrency, and rate limit all passed.
+## Repairs
 
-Release is blocked by the required `container-build-stage` claim command:
+- Reproduced the verifier command exactly after `npm ci`:
+  `npm test -- --grep @claim:container-build-stage` exited 1 with Vitest
+  3.2.7's `CACError: Unknown option --grep`.
+- Replaced it with Vitest's supported, fully anchored `--testNamePattern`.
+  It selects the one container-build assertion.
+- Added a unit regression test that requires the exact supported manifest
+  command and rejects `--grep` for this claim.
+- Applied `cargo fmt` to `src/main.rs`; `cargo fmt --all -- --check` passes.
+- Excluded `.factory` evidence, source imagery, frontend/tooling, and other
+  non-runtime artifacts from Cargo packaging. The crate is now 18 files,
+  213.4 KiB unpacked / 55.9 KiB compressed (the verifier measured 11.6 MB).
 
-```text
-npm test -- --grep @claim:container-build-stage
-```
+## Local verification
 
-Vitest 3.2.7 exits 1 with `CACError: Unknown option --grep`. Nineteen other manifest claims pass. `cargo fmt --all -- --check` also fails on existing formatting differences in `src/main.rs`.
+Run from a clean `npm ci` installation (60 packages, zero vulnerabilities):
 
-Full evidence and severity-ranked findings are in `.factory/verification-11.md`.
+- All 20 literal commands in `.factory/claims.json`: PASS. The repaired
+  `container-build-stage` command runs one matching Vitest test; the recorded
+  sweep ends with `ALL_CLAIMS_PASSED=20`.
+- `npm test`: PASS, 6 tests.
+- `npm run typecheck`, `npm run lint`, `npm run build`: PASS. Production
+  output is `dist/`; JS is 19.46 kB raw / 6.78 kB gzip and CSS is 8.80 kB raw
+  / 2.73 kB gzip.
+- `cargo fmt --all -- --check`: PASS.
+- `cargo test --locked`: PASS, 18 tests.
+- `cargo clippy --locked --all-targets -- -D warnings`: PASS.
+- `cargo build --release --locked`: PASS.
+- `npm run test:browser`: PASS in desktop Chromium and 390 px mobile.
+- `npm run test:a11y`: PASS in both projects; its Axe coverage checks demo,
+  route metadata, keyboard skip-link flow, touch targets, reflow, and 404.
+- `cargo package --locked --allow-dirty --no-verify`: PASS. A fresh Cargo-home
+  install of the extracted crate passed `--help`, `demo`, and
+  `scan --config watches.json`, creating a Markdown action card from the
+  bundled local feed.
 
-## Verification summary
+The local environment has no `docker` executable. The configured deployment
+uses `az acr build` from this Dockerfile with the three source-SHA build args;
+the remote build is the authoritative container build gate. This product has
+no service worker, payment, account, or runtime AI feature, so update,
+billing, identity-provider, and AI-gateway checks are not applicable.
 
-- Clean install: PASS; 60 packages, zero vulnerabilities.
-- Claims: **FAIL; 19 passed, 1 failed**.
-- First-read/demo hard gate: PASS at desktop and 390 px.
-- Unit/type/lint/build: `npm test`, typecheck, lint, Vite build, 18 Rust tests, strict Clippy, and locked release build pass; Rustfmt check fails.
-- Browser: 59 passed / 1 intentional skip locally and against live.
-- Accessibility: 16/16 locally and live; zero Axe violations.
-- Live rate limit: 40-request burst; excess requests return 429 with `Retry-After: 1`; refill is 20 requests/second.
-- Lighthouse mobile: 98 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.3 s, CLS 0, 88 KiB transfer.
-- CLI: packaged, installed into a clean temporary consumer, scanned the bundled mapping, and acknowledged the generated Markdown action card.
-- Docker image build could not run because this verifier image has no Docker executable. The locked release build and Dockerfile assertions pass.
+## Deployment and live evidence
 
-## Required next steps
+The repair is deployed with `deploy/deploy-repair.sh`, which preserves the
+single durable Azure Files `/data` replica and passes `BUILD_SHA`. Post-deploy
+live health, identity, browser, accessibility, privacy, response-policy, and
+rate-limit results are recorded after deployment.
 
-1. Replace the unsupported claim test command with a Vitest-supported exact filter and rerun every literal claims entry from a clean clone.
-2. Apply Rustfmt and rerun the full local and live gates.
-3. Consider excluding `.factory` artifacts and source-only imagery from the Cargo package.
+## Known gaps
 
-No product code was modified during verification.
+None in the repaired product. The local Docker CLI is absent as noted above.

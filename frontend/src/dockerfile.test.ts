@@ -14,6 +14,18 @@ describe('container build contract', () => {
     expect(dockerfile).toContain('COPY --from=build /build-sha /app/build-sha')
   })
 
+  it('keeps the container-build claim on Vitest’s supported exact-name filter', () => {
+    const claims = JSON.parse(
+      readFileSync(new URL('../../.factory/claims.json', import.meta.url), 'utf8'),
+    ) as Array<{ id: string; test: string }>
+    const claim = claims.find(({ id }) => id === 'container-build-stage')
+
+    expect(claim?.test).toBe(
+      "npm test -- --testNamePattern '^container build contract @claim:container-build-stage uses the official Rust build stage and locked build command$'",
+    )
+    expect(claim?.test).not.toContain('--grep')
+  })
+
   it('ships a repair deployment that cannot restore the generic multi-replica topology', () => {
     const deploy = readFileSync(new URL('../../deploy/deploy-repair.sh', import.meta.url), 'utf8')
     expect(deploy).toContain('"maxReplicas":1')

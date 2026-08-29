@@ -721,7 +721,8 @@ async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Scan
         };
         let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
         if watch.last_hash.as_deref() != Some(&hash) {
-            made += record_matches(&app.db, workspace, &watch, parse_notices(&text, &watch.url)).await?;
+            made += record_matches(&app.db, workspace, &watch, parse_notices(&text, &watch.url))
+                .await?;
         }
         sqlx::query("UPDATE workspace_watches SET last_hash=?, last_scanned=? WHERE id=? AND workspace_id=?")
             .bind(hash).bind(Utc::now().to_rfc3339()).bind(watch.id).bind(workspace).execute(&app.db).await.map_err(internal)?;
@@ -940,7 +941,7 @@ async fn validate_watch(watch: &NewWatch) -> ApiResult<()> {
     {
         return Err(ApiError(
             StatusCode::BAD_REQUEST,
-                "Provide a vendor, public URL, keywords, owner, and check command.".to_owned(),
+            "Provide a vendor, public URL, keywords, owner, and check command.".to_owned(),
         ));
     }
     let fields = [
@@ -1426,8 +1427,23 @@ mod tests {
         let watch = sqlx::query_as::<_, WatchRow>("SELECT id, vendor, url, keywords, owner, version, command, last_hash FROM workspace_watches")
             .fetch_one(&db).await.unwrap();
         let fixture = "<rss><channel><item><title>Webhook deprecation date</title><description>Update webhook signatures before June.</description><link>https://vendor.example/notice</link></item></channel></rss>";
-        assert_eq!(record_matches(&db, workspace, &watch, parse_notices(fixture, &watch.url)).await.unwrap(), 1);
-        let mut actions = list_actions(State(App { db: db.clone(), build: "test".to_owned(), limiter: Arc::new(Mutex::new(HashMap::new())) }), bearer(&token)).await.unwrap().0;
+        assert_eq!(
+            record_matches(&db, workspace, &watch, parse_notices(fixture, &watch.url))
+                .await
+                .unwrap(),
+            1
+        );
+        let mut actions = list_actions(
+            State(App {
+                db: db.clone(),
+                build: "test".to_owned(),
+                limiter: Arc::new(Mutex::new(HashMap::new())),
+            }),
+            bearer(&token),
+        )
+        .await
+        .unwrap()
+        .0;
         let action = actions.remove(0);
         assert_eq!(action.title, "Webhook deprecation date");
         assert_eq!(action.matched, "webhook");
