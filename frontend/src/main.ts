@@ -85,6 +85,19 @@ function actionCard(action: Action) {
   return `<article class="action ${action.acknowledged ? 'done' : ''}" data-action="${action.id}"><div class="action-top"><p class="eyebrow">Matched “${escape(action.matched)}” · ${escape(action.seenAt)}</p><span class="status">${action.acknowledged ? 'Acknowledged' : 'Needs acknowledgement'}</span></div><h3>${escape(action.title)}</h3><p>${escape(action.excerpt)}</p><dl><div><dt>Owner</dt><dd>${escape(action.owner)}</dd></div><div><dt>Affected dependency</dt><dd>${escape(dependency)}</dd></div><div><dt>Check</dt><dd><code>${escape(action.command)}</code></dd></div></dl><div class="card-actions"><a href="${escape(action.url)}" target="_blank" rel="noreferrer">Open vendor notice <span class="sr-only">(opens in a new tab)</span></a>${action.acknowledged ? '' : `<button class="secondary ack" data-id="${action.id}">Acknowledge action</button>`}</div></article>`
 }
 
+function runTime(value?: string) {
+  if (!value) return 'Not run yet.'
+  const date = new Date(value)
+  return Number.isNaN(date.valueOf()) ? value : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function scheduleControls(watch: Watch) {
+  if (!watch.scheduleMinutes) return `<small class="schedule-state">Scheduled scans are off.</small><span class="watch-controls"><button class="text-button schedule-watch" data-watch="${watch.id}">Schedule scans for ${escape(watch.vendor)}</button></span>`
+  const destination = watch.notificationUrl ? `<small>Run summaries: ${escape(watch.notificationUrl)}</small>` : '<small>Run summaries stay in this workspace.</small>'
+  const failure = watch.lastScheduleError ? `<small class="schedule-error">Last run error: ${escape(watch.lastScheduleError)}</small>` : ''
+  return `<small class="schedule-state">Scheduled every ${watch.scheduleMinutes} minutes.</small><small>Last run: ${escape(runTime(watch.lastScheduledAt))}</small><small>Next run: ${escape(runTime(watch.nextRunAt))}</small>${destination}${failure}<span class="watch-controls"><button class="text-button schedule-watch" data-watch="${watch.id}">Change schedule for ${escape(watch.vendor)}</button><button class="text-button stop-schedule" data-watch="${watch.id}">Stop scheduled scans for ${escape(watch.vendor)}</button></span>`
+}
+
 function dashboard(isDemoBoard = false) {
   const pending = actions.filter(action => !action.acknowledged)
   const heading = pending.length ? `${pending.length} action${pending.length === 1 ? ' needs' : 's need'} acknowledgement` : 'No actions need acknowledgement'
@@ -92,13 +105,13 @@ function dashboard(isDemoBoard = false) {
   const sectionHeading = isDemoBoard ? 'h2' : 'h3'
   const preview = importPreview ? `<section class="import-preview" aria-labelledby="import-heading"><${sectionHeading} id="import-heading">Review ${importPreview.length} imported watch${importPreview.length === 1 ? '' : 'es'}</${sectionHeading}><p>A rejected import leaves your current watches unchanged.</p><ul>${importPreview.map(watch => `<li><strong>${escape(watch.vendor)}</strong> — ${escape(watch.keywords)} → ${escape(watch.owner)}</li>`).join('')}</ul><button id="confirm-import" class="primary">Import ${importPreview.length} watch${importPreview.length === 1 ? '' : 'es'}</button><button id="cancel-import" class="text-button">Cancel import</button></section>` : ''
   const actionSection = `<section class="action-column" aria-labelledby="cards-heading"><${sectionHeading} id="cards-heading">Action cards</${sectionHeading}><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Matched release notes appear here after you scan a feed.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section>`
-  const watchesPanel = `<section class="watches" aria-labelledby="watches-heading"><div class="side-title"><${sectionHeading} id="watches-heading">Watched feeds</${sectionHeading}><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>Affected dependency: ${escape(watch.version.trim() || 'Not recorded')}</small><small>Keywords: ${escape(watch.keywords)}</small><span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<div class="watch-file-actions"><button id="export-watches" class="text-button" ${watches.length ? '' : 'disabled'}>Export watch file</button><button id="import-watches" class="text-button">Import watch file</button><input id="watch-file" type="file" accept="application/json,.json" hidden></div><button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></section>`
+  const watchesPanel = `<section class="watches" aria-labelledby="watches-heading"><div class="side-title"><${sectionHeading} id="watches-heading">Watched feeds</${sectionHeading}><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>Affected dependency: ${escape(watch.version.trim() || 'Not recorded')}</small><small>Keywords: ${escape(watch.keywords)}</small>${isDemoBoard ? '' : scheduleControls(watch)}<span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<div class="watch-file-actions"><button id="export-watches" class="text-button" ${watches.length ? '' : 'disabled'}>Export watch file</button><button id="import-watches" class="text-button">Import watch file</button><input id="watch-file" type="file" accept="application/json,.json" hidden></div><button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></section>`
   if (isDemoBoard) return `<section class="dashboard demo-dashboard" aria-labelledby="action-heading"><div class="demo-head">${headingMarkup}</div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p>${preview}${actionSection}<div class="dash-buttons demo-controls"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div>${watchesPanel}</section>`
   return `<section class="dashboard" aria-labelledby="action-heading"><div class="dash-head"><div>${headingMarkup}</div><div class="dash-buttons"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div></div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p>${preview}<div class="dash-grid">${actionSection}${watchesPanel}</div></section>`
 }
 
 function home() {
-  return `<section class="hero"><div class="hero-copy"><h1 tabindex="-1">Turn vendor changes into assigned action cards</h1><p class="lede">For engineers who maintain payment, authentication, analytics, or messaging integrations.</p><div class="hero-actions"><button class="primary" id="try-demo">Try it with sample data</button><span>See matched notices, owners, versions, and checks.</span></div><ul class="facts"><li>You choose the matching keywords.</li><li>Scans run only when you request them.</li><li>Your workspace is separated from other visitors.</li></ul></div><figure><img src="/paper-cut-hero.webp" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Paper release-note cards move into an assigned action card."></figure></section>${dashboard()}<section class="how" id="how"><p class="eyebrow">How it works</p><h2>Give each vendor change a next step</h2><ol><li><strong>Watch a public feed.</strong><span>Paste a changelog or RSS address you are allowed to read.</span></li><li><strong>Choose your keywords.</strong><span>Use keywords like “webhook”, “deprecation”, or an API version.</span></li><li><strong>Run the right check.</strong><span>Each matching notice includes an owner, dependency version, and check command.</span></li></ol></section><section class="limits"><h2>Hosted workspace scope</h2><p>The hosted workspace holds up to three watches.</p><p>Use the local CLI for a four-watch mapping.</p><h2>What this does not do</h2><p>It does not scan automatically.</p><p>Private, loopback, and link-local addresses are blocked.</p></section>`
+  return `<section class="hero"><div class="hero-copy"><h1 tabindex="-1">Turn vendor changes into assigned action cards</h1><p class="lede">For engineers who maintain payment, authentication, analytics, or messaging integrations.</p><div class="hero-actions"><button class="primary" id="try-demo">Try it with sample data</button><span>See matched notices, owners, versions, and checks.</span></div><ul class="facts"><li>Scanning public feeds requires internet.</li><li>No account or payment is required.</li><li>Your workspace is separated from other visitors.</li></ul></div><figure><img src="/paper-cut-hero.webp" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Paper release-note cards move into an assigned action card."></figure></section>${dashboard()}<section class="how" id="how"><p class="eyebrow">How it works</p><h2>Give each vendor change a next step</h2><ol><li><strong>Watch a public feed.</strong><span>Paste a changelog or RSS address you are allowed to read.</span></li><li><strong>Choose your keywords.</strong><span>Use keywords like “webhook”, “deprecation”, or an API version.</span></li><li><strong>Run the right check.</strong><span>Each matching notice includes an owner, dependency version, and check command.</span></li></ol></section><section class="limits"><h2>Hosted workspace limits</h2><p>The hosted workspace holds up to three watches.</p><p>Use the local CLI for a four-watch mapping.</p><h2>Scheduled scans</h2><p>Turn on a schedule for any watch when you want automatic scans.</p><p>Scheduled watches show the last run, next run, and errors.</p><p>Add an optional public webhook destination for run summaries.</p><h2>Source safeguards</h2><p>Private, loopback, and link-local addresses are blocked.</p></section>`
 }
 
 function legal(kind: 'privacy' | 'terms') {
@@ -219,6 +232,40 @@ async function removeWatch(watch: Watch) {
   }
 }
 
+async function configureSchedule(watch: Watch) {
+  const enteredInterval = prompt('Run this watch every how many minutes? Choose 15 to 10,080.', String(watch.scheduleMinutes || 60))
+  if (enteredInterval === null) return
+  const everyMinutes = Number(enteredInterval)
+  if (!Number.isInteger(everyMinutes) || everyMinutes < 15 || everyMinutes > 10080) {
+    statusMessage = 'This schedule was not saved. Choose a whole number from 15 to 10,080.'
+    render()
+    return
+  }
+  const destination = prompt('Optional public webhook URL for run summaries. Leave blank for none.', watch.notificationUrl || '')
+  if (destination === null) return
+  try {
+    const response = await api(`/api/watches/${watch.id}/schedule`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ everyMinutes, notificationUrl: destination.trim() || null }) })
+    if (!response.ok) throw new Error(await response.text())
+    statusMessage = `Scheduled ${watch.vendor} every ${everyMinutes} minutes. The first automatic scan is queued.`
+    await hydrateReal()
+  } catch (error) {
+    statusMessage = `This schedule was not saved. ${error instanceof Error ? error.message : 'Try again.'}`
+    render()
+  }
+}
+
+async function stopSchedule(watch: Watch) {
+  try {
+    const response = await api(`/api/watches/${watch.id}/schedule`, { method: 'DELETE' })
+    if (!response.ok) throw new Error(await response.text())
+    statusMessage = `Stopped scheduled scans for ${watch.vendor}. You can still scan it manually.`
+    await hydrateReal()
+  } catch (error) {
+    statusMessage = `Scheduled scans were not stopped. ${error instanceof Error ? error.message : 'Try again.'}`
+    render()
+  }
+}
+
 function csv() {
   const anchor = document.createElement('a')
   anchor.href = URL.createObjectURL(new Blob([actionCsv(actions)], { type: 'text/csv' }))
@@ -297,6 +344,14 @@ function bind() {
   document.querySelectorAll<HTMLButtonElement>('.delete-watch').forEach(button => button.addEventListener('click', () => {
     const watch = watches.find(item => String(item.id) === button.dataset.watch)
     if (watch) void removeWatch(watch)
+  }))
+  document.querySelectorAll<HTMLButtonElement>('.schedule-watch').forEach(button => button.addEventListener('click', () => {
+    const watch = watches.find(item => String(item.id) === button.dataset.watch)
+    if (watch) void configureSchedule(watch)
+  }))
+  document.querySelectorAll<HTMLButtonElement>('.stop-schedule').forEach(button => button.addEventListener('click', () => {
+    const watch = watches.find(item => String(item.id) === button.dataset.watch)
+    if (watch) void stopSchedule(watch)
   }))
   document.querySelector('#reset-demo')?.addEventListener('click', () => { localStorage.removeItem(demoKey); load(); render() })
   document.querySelector('#start-real')?.addEventListener('click', () => { localStorage.removeItem(demoKey); navigate('/') })

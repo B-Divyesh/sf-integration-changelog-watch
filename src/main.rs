@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use chrono::Utc;
+use chrono::{Duration as ChronoDuration, Utc};
 use reqwest::{redirect::Policy, Client};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
@@ -56,6 +56,16 @@ struct Watch {
     command: String,
     #[serde(rename = "lastScan")]
     last_scanned: Option<String>,
+    #[serde(rename = "scheduleMinutes")]
+    schedule_minutes: Option<i64>,
+    #[serde(rename = "lastScheduledAt")]
+    last_scheduled_at: Option<String>,
+    #[serde(rename = "nextRunAt")]
+    next_run_at: Option<String>,
+    #[serde(rename = "lastScheduleError")]
+    last_schedule_error: Option<String>,
+    #[serde(rename = "notificationUrl")]
+    notification_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -105,6 +115,24 @@ struct ScanResult {
     new_actions: usize,
     failures: Vec<String>,
     message: String,
+}
+
+/// A schedule is deliberately explicit. A newly-created watch has no
+/// interval and the background worker never fetches it until its owner opts
+/// in. Notification destinations are optional public webhook URLs.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ScheduleConfig {
+    every_minutes: u32,
+    notification_url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ScheduleNotification<'a> {
+    vendor: &'a str,
+    new_actions: usize,
+    failure: Option<&'a str>,
+    ran_at: &'a str,
 }
 
 #[derive(Deserialize)]
@@ -248,12 +276,17 @@ async fn main() {
         },
         "starting Integration Changelog Watch"
     );
+    start_schedule_runner(state.clone());
 
     let api = Router::new()
         .route("/api/workspaces", post(create_workspace))
         .route("/api/watches", get(list_watches).post(add_watch))
         .route("/api/watches/import", post(replace_watches))
         .route("/api/watches/:id", put(update_watch).delete(delete_watch))
+        .route(
+            "/api/watches/:id/schedule",
+            put(configure_watch_schedule).delete(stop_watch_schedule),
+        )
         .route("/api/actions", get(list_actions))
         .route("/api/actions/:id", post(ack_action))
         .route("/api/scan", post(scan))
@@ -526,7 +559,7 @@ fn server_port(value: Option<String>) -> u16 {
 async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS workspaces(id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL);
-         CREATE TABLE IF NOT EXISTS workspace_watches(id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, vendor TEXT NOT NULL, url TEXT NOT NULL, keywords TEXT NOT NULL, owner TEXT NOT NULL, version TEXT NOT NULL, command TEXT NOT NULL, last_hash TEXT, last_scanned TEXT, FOREIGN KEY(workspace_id) REFERENCES workspaces(id));
+         CREATE TABLE IF NOT EXISTS workspace_watches(id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, vendor TEXT NOT NULL, url TEXT NOT NULL, keywords TEXT NOT NULL, owner TEXT NOT NULL, version TEXT NOT NULL, command TEXT NOT NULL, last_hash TEXT, last_scanned TEXT, schedule_minutes INTEGER, last_scheduled_at TEXT, next_run_at TEXT, last_schedule_error TEXT, notification_url TEXT, FOREIGN KEY(workspace_id) REFERENCES workspaces(id));
          CREATE TABLE IF NOT EXISTS workspace_actions(id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, watch_id INTEGER NOT NULL, notice_key TEXT NOT NULL, title TEXT NOT NULL, excerpt TEXT NOT NULL, matched TEXT NOT NULL, url TEXT NOT NULL, owner TEXT NOT NULL, version TEXT NOT NULL DEFAULT '', command TEXT NOT NULL, acknowledged INTEGER NOT NULL DEFAULT 0, seen_at TEXT NOT NULL, UNIQUE(workspace_id, watch_id, notice_key), FOREIGN KEY(workspace_id) REFERENCES workspaces(id));
          CREATE INDEX IF NOT EXISTS workspace_watches_owner ON workspace_watches(workspace_id);
          CREATE INDEX IF NOT EXISTS workspace_actions_owner ON workspace_actions(workspace_id);",
@@ -540,6 +573,18 @@ async fn setup(db: &SqlitePool) -> Result<(), sqlx::Error> {
         sqlx::query("ALTER TABLE workspace_actions ADD COLUMN version TEXT NOT NULL DEFAULT ''")
             .execute(db)
             .await;
+    // Scheduled scans arrived after the first durable schema. SQLite lacks
+    // ADD COLUMN IF NOT EXISTS; a duplicate-column error means the existing
+    // workspace was already migrated and is safe to keep serving.
+    for statement in [
+        "ALTER TABLE workspace_watches ADD COLUMN schedule_minutes INTEGER",
+        "ALTER TABLE workspace_watches ADD COLUMN last_scheduled_at TEXT",
+        "ALTER TABLE workspace_watches ADD COLUMN next_run_at TEXT",
+        "ALTER TABLE workspace_watches ADD COLUMN last_schedule_error TEXT",
+        "ALTER TABLE workspace_watches ADD COLUMN notification_url TEXT",
+    ] {
+        let _ = sqlx::query(statement).execute(db).await;
+    }
     Ok(())
 }
 
@@ -590,7 +635,7 @@ async fn workspace_id(headers: &HeaderMap, app: &App) -> ApiResult<i64> {
 
 async fn list_watches(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Vec<Watch>>> {
     let workspace = workspace_id(&headers, &app).await?;
-    let watches = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE workspace_id=? ORDER BY id DESC")
+    let watches = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned, schedule_minutes, last_scheduled_at, next_run_at, last_schedule_error, notification_url FROM workspace_watches WHERE workspace_id=? ORDER BY id DESC")
         .bind(workspace)
         .fetch_all(&app.db)
         .await
@@ -648,7 +693,7 @@ async fn replace_watches(
         .execute(&mut *transaction)
         .await
         .map_err(internal)?;
-        let saved_watch = sqlx::query_as::<_, Watch>("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
+        let saved_watch = sqlx::query_as::<_, Watch>("SELECT id, vendor, url, keywords, owner, version, command, last_scanned, schedule_minutes, last_scheduled_at, next_run_at, last_schedule_error, notification_url FROM workspace_watches WHERE id=? AND workspace_id=?")
             .bind(inserted.last_insert_rowid())
             .bind(workspace)
             .fetch_one(&mut *transaction)
@@ -688,7 +733,7 @@ async fn insert_watch_under_limit(
         return Err(ApiError(StatusCode::CONFLICT, "This workspace already has three watches. Edit an existing watch before adding another.".to_owned()));
     }
     let id = result.last_insert_rowid();
-    let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
+    let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned, schedule_minutes, last_scheduled_at, next_run_at, last_schedule_error, notification_url FROM workspace_watches WHERE id=? AND workspace_id=?")
         .bind(id).bind(workspace).fetch_one(db).await.map_err(internal)?;
     Ok(watch)
 }
@@ -710,9 +755,84 @@ async fn update_watch(
             "That watch does not exist in this workspace.".to_owned(),
         ));
     }
-    let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned FROM workspace_watches WHERE id=? AND workspace_id=?")
+    let watch = sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned, schedule_minutes, last_scheduled_at, next_run_at, last_schedule_error, notification_url FROM workspace_watches WHERE id=? AND workspace_id=?")
         .bind(id).bind(workspace).fetch_one(&app.db).await.map_err(internal)?;
     Ok(Json(watch))
+}
+
+async fn configure_watch_schedule(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(config): Json<ScheduleConfig>,
+) -> ApiResult<Json<Watch>> {
+    let workspace = workspace_id(&headers, &app).await?;
+    if !(15..=10_080).contains(&config.every_minutes) {
+        return Err(ApiError(
+            StatusCode::BAD_REQUEST,
+            "Choose a schedule from 15 minutes to 7 days.".to_owned(),
+        ));
+    }
+    let notification_url = config
+        .notification_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|url| !url.is_empty())
+        .map(str::to_owned);
+    if let Some(url) = &notification_url {
+        resolve_public_url(url)
+            .await
+            .map_err(|message| ApiError(StatusCode::BAD_REQUEST, message))?;
+    }
+    let now = Utc::now();
+    let next = now + ChronoDuration::minutes(i64::from(config.every_minutes));
+    let changed = sqlx::query("UPDATE workspace_watches SET schedule_minutes=?, notification_url=?, last_schedule_error=NULL, next_run_at=? WHERE id=? AND workspace_id=?")
+        .bind(i64::from(config.every_minutes))
+        .bind(notification_url)
+        .bind(next.to_rfc3339())
+        .bind(id)
+        .bind(workspace)
+        .execute(&app.db)
+        .await
+        .map_err(internal)?;
+    if changed.rows_affected() != 1 {
+        return Err(ApiError(
+            StatusCode::NOT_FOUND,
+            "That watch does not exist in this workspace.".to_owned(),
+        ));
+    }
+    watch_for_workspace(&app.db, workspace, id).await.map(Json)
+}
+
+async fn stop_watch_schedule(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<Watch>> {
+    let workspace = workspace_id(&headers, &app).await?;
+    let changed = sqlx::query("UPDATE workspace_watches SET schedule_minutes=NULL, notification_url=NULL, next_run_at=NULL, last_schedule_error=NULL WHERE id=? AND workspace_id=?")
+        .bind(id)
+        .bind(workspace)
+        .execute(&app.db)
+        .await
+        .map_err(internal)?;
+    if changed.rows_affected() != 1 {
+        return Err(ApiError(
+            StatusCode::NOT_FOUND,
+            "That watch does not exist in this workspace.".to_owned(),
+        ));
+    }
+    watch_for_workspace(&app.db, workspace, id).await.map(Json)
+}
+
+async fn watch_for_workspace(db: &SqlitePool, workspace: i64, id: i64) -> ApiResult<Watch> {
+    sqlx::query_as("SELECT id, vendor, url, keywords, owner, version, command, last_scanned, schedule_minutes, last_scheduled_at, next_run_at, last_schedule_error, notification_url FROM workspace_watches WHERE id=? AND workspace_id=?")
+        .bind(id)
+        .bind(workspace)
+        .fetch_optional(db)
+        .await
+        .map_err(internal)?
+        .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "That watch does not exist in this workspace.".to_owned()))
 }
 
 async fn delete_watch(
@@ -784,20 +904,10 @@ async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Scan
     let mut made = 0;
     let mut failures = Vec::new();
     for watch in watches {
-        let text = match fetch_public(&watch.url).await {
-            Ok(text) => text,
-            Err(message) => {
-                failures.push(format!("{}: {message}", watch.vendor));
-                continue;
-            }
-        };
-        let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
-        if watch.last_hash.as_deref() != Some(&hash) {
-            made += record_matches(&app.db, workspace, &watch, parse_notices(&text, &watch.url))
-                .await?;
+        match scan_watch(&app.db, workspace, &watch).await {
+            Ok(count) => made += count,
+            Err(message) => failures.push(format!("{}: {message}", watch.vendor)),
         }
-        sqlx::query("UPDATE workspace_watches SET last_hash=?, last_scanned=? WHERE id=? AND workspace_id=?")
-            .bind(hash).bind(Utc::now().to_rfc3339()).bind(watch.id).bind(workspace).execute(&app.db).await.map_err(internal)?;
     }
     let message = if failures.is_empty() {
         format!("Scan complete. {made} new action card(s).")
@@ -812,6 +922,114 @@ async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Scan
         failures,
         message,
     }))
+}
+
+async fn scan_watch(db: &SqlitePool, workspace: i64, watch: &WatchRow) -> Result<usize, String> {
+    let text = fetch_public(&watch.url).await?;
+    let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
+    let made = if watch.last_hash.as_deref() != Some(&hash) {
+        record_matches(db, workspace, watch, parse_notices(&text, &watch.url))
+            .await
+            .map_err(|error| error.1)?
+    } else {
+        0
+    };
+    sqlx::query("UPDATE workspace_watches SET last_hash=?, last_scanned=? WHERE id=? AND workspace_id=?")
+        .bind(hash)
+        .bind(Utc::now().to_rfc3339())
+        .bind(watch.id)
+        .bind(workspace)
+        .execute(db)
+        .await
+        .map_err(|_| "The server could not record this scan. Try again.".to_owned())?;
+    Ok(made)
+}
+
+fn start_schedule_runner(app: App) {
+    tokio::spawn(async move {
+        loop {
+            if !PRODUCTION_TOPOLOGY_READY.load(Ordering::SeqCst) {
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                continue;
+            }
+            if let Err(error) = run_due_schedules(&app).await {
+                warn!(%error, "scheduled scans could not inspect due watches");
+            }
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        }
+    });
+}
+
+/// Runs only watches whose owner has selected an interval and whose recorded
+/// next run is due. This is process-owned work, which is why the deployment is
+/// intentionally one durable replica.
+async fn run_due_schedules(app: &App) -> Result<usize, sqlx::Error> {
+    let now = Utc::now();
+    let watches: Vec<ScheduledWatchRow> = sqlx::query_as("SELECT workspace_id, id, vendor, url, keywords, owner, version, command, last_hash, schedule_minutes, notification_url FROM workspace_watches WHERE schedule_minutes IS NOT NULL AND next_run_at IS NOT NULL AND next_run_at <= ? ORDER BY next_run_at ASC LIMIT 25")
+        .bind(now.to_rfc3339())
+        .fetch_all(&app.db)
+        .await?;
+    let due = watches.len();
+    for scheduled in watches {
+        let watch = scheduled.as_watch();
+        let ran_at = Utc::now().to_rfc3339();
+        let next_run = (Utc::now() + ChronoDuration::minutes(scheduled.schedule_minutes))
+            .to_rfc3339();
+        let result = scan_watch(&app.db, scheduled.workspace_id, &watch).await;
+        let mut failure = result.as_ref().err().cloned();
+        let new_actions = result.unwrap_or(0);
+        if let Some(destination) = scheduled.notification_url.as_deref() {
+            if let Err(error) = send_schedule_notification(
+                destination,
+                ScheduleNotification {
+                    vendor: &scheduled.vendor,
+                    new_actions,
+                    failure: failure.as_deref(),
+                    ran_at: &ran_at,
+                },
+            )
+            .await
+            {
+                let notification_error = format!("Notification delivery failed: {error}");
+                failure = Some(match failure {
+                    Some(scan_error) => format!("{scan_error} {notification_error}"),
+                    None => notification_error,
+                });
+            }
+        }
+        record_scheduled_status(
+            &app.db,
+            scheduled.workspace_id,
+            scheduled.id,
+            &ran_at,
+            &next_run,
+            failure.as_deref(),
+        )
+        .await?;
+    }
+    Ok(due)
+}
+
+async fn record_scheduled_status(
+    db: &SqlitePool,
+    workspace: i64,
+    watch: i64,
+    ran_at: &str,
+    next_run: &str,
+    failure: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    // A user may turn a schedule off while its final network request is in
+    // flight. Do not let that older worker put a next-run marker back after
+    // consent was withdrawn.
+    sqlx::query("UPDATE workspace_watches SET last_scheduled_at=?, next_run_at=?, last_schedule_error=? WHERE id=? AND workspace_id=? AND schedule_minutes IS NOT NULL")
+        .bind(ran_at)
+        .bind(next_run)
+        .bind(failure)
+        .bind(watch)
+        .bind(workspace)
+        .execute(db)
+        .await?;
+    Ok(())
 }
 
 /// The feed transport and the match recorder are separate so the exact action
@@ -852,7 +1070,7 @@ async fn record_matches(
     Ok(made)
 }
 
-#[derive(FromRow)]
+#[derive(Clone, FromRow)]
 struct WatchRow {
     id: i64,
     vendor: String,
@@ -862,6 +1080,36 @@ struct WatchRow {
     version: String,
     command: String,
     last_hash: Option<String>,
+}
+
+#[derive(FromRow)]
+struct ScheduledWatchRow {
+    workspace_id: i64,
+    id: i64,
+    vendor: String,
+    url: String,
+    keywords: String,
+    owner: String,
+    version: String,
+    command: String,
+    last_hash: Option<String>,
+    schedule_minutes: i64,
+    notification_url: Option<String>,
+}
+
+impl ScheduledWatchRow {
+    fn as_watch(&self) -> WatchRow {
+        WatchRow {
+            id: self.id,
+            vendor: self.vendor.clone(),
+            url: self.url.clone(),
+            keywords: self.keywords.clone(),
+            owner: self.owner.clone(),
+            version: self.version.clone(),
+            command: self.command.clone(),
+            last_hash: self.last_hash.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1068,6 +1316,39 @@ async fn fetch_public(value: &str) -> Result<String, String> {
         .map_err(|_| "Could not reach this public feed.".to_owned())?;
     ensure_feed_response_is_safe(response.status(), response.content_length())?;
     read_bounded_feed(response).await
+}
+
+/// Posts a small run summary only to an owner-configured public destination.
+/// It shares the feed transport's DNS pinning and no-redirect policy so a
+/// saved webhook cannot become a path into a private network later.
+async fn send_schedule_notification(
+    value: &str,
+    payload: ScheduleNotification<'_>,
+) -> Result<(), String> {
+    let (url, addresses) = resolve_public_url(value).await?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| "The notification URL has no host.".to_owned())?;
+    let client = Client::builder()
+        .redirect(Policy::none())
+        .resolve_to_addrs(host, &addresses)
+        .user_agent("Integration-Changelog-Watch/1.0 (+configured-by-owner)")
+        .timeout(Duration::from_secs(12))
+        .build()
+        .map_err(|_| "Could not prepare a safe notification request.".to_owned())?;
+    let response = client
+        .post(url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|_| "Could not reach the notification destination.".to_owned())?;
+    if response.status().is_redirection() {
+        return Err("The notification destination redirects. Use its final public HTTPS address instead.".to_owned());
+    }
+    if !response.status().is_success() {
+        return Err("The notification destination returned an error response.".to_owned());
+    }
+    Ok(())
 }
 
 fn ensure_feed_response_is_safe(
@@ -1985,6 +2266,241 @@ mod tests {
             default_database_url(),
             "sqlite:/data/changelog-watch.db?mode=rwc&vfs=unix-dotfile"
         );
+    }
+
+    #[test]
+    fn claim_azure_files_dotfile_locking() {
+        // The locking VFS is a separate deployable fact from the one-replica
+        // topology. Keep this assertion focused so the public README claim
+        // has one exact test mapping.
+        assert_eq!(
+            default_database_url(),
+            "sqlite:/data/changelog-watch.db?mode=rwc&vfs=unix-dotfile"
+        );
+        assert!(default_database_url().contains("vfs=unix-dotfile"));
+    }
+
+    #[tokio::test]
+    async fn claim_scheduled_scans_require_explicit_consent_and_show_next_run() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        let token = "s".repeat(64);
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash(&token))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command) VALUES(?,?,?,?,?,?,?)")
+            .bind(workspace)
+            .bind("Consent fixture")
+            .bind("https://1.1.1.1/feed")
+            .bind("webhook")
+            .bind("Maya")
+            .bind("sdk 1.0")
+            .bind("npm test")
+            .execute(&db)
+            .await
+            .unwrap();
+        let watch_id: i64 = sqlx::query_scalar("SELECT id FROM workspace_watches")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let app = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
+        };
+
+        assert_eq!(run_due_schedules(&app).await.unwrap(), 0);
+        let unscheduled: Option<i64> = sqlx::query_scalar("SELECT schedule_minutes FROM workspace_watches WHERE id=?")
+            .bind(watch_id)
+            .fetch_one(&app.db)
+            .await
+            .unwrap();
+        assert_eq!(unscheduled, None);
+
+        let scheduled = configure_watch_schedule(
+            State(app.clone()),
+            bearer(&token),
+            Path(watch_id),
+            Json(ScheduleConfig {
+                every_minutes: 60,
+                notification_url: None,
+            }),
+        )
+        .await
+        .unwrap()
+        .0;
+        assert_eq!(scheduled.schedule_minutes, Some(60));
+        assert!(scheduled.next_run_at.is_some());
+        assert_eq!(scheduled.last_scheduled_at, None);
+        assert_eq!(scheduled.last_schedule_error, None);
+    }
+
+    #[tokio::test]
+    async fn claim_scheduled_matches_deduplicate_with_existing_notice_key() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash("scheduled-dedup-token"))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command,schedule_minutes,next_run_at) VALUES(?,?,?,?,?,?,?,?,?)")
+            .bind(workspace)
+            .bind("Scheduled fixture")
+            .bind("https://vendor.example/feed.xml")
+            .bind("webhook")
+            .bind("Maya")
+            .bind("sdk 2.0")
+            .bind("pnpm test")
+            .bind(60)
+            .bind("2000-01-01T00:00:00Z")
+            .execute(&db)
+            .await
+            .unwrap();
+        let watch = sqlx::query_as::<_, WatchRow>("SELECT id, vendor, url, keywords, owner, version, command, last_hash FROM workspace_watches")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let fixture = "<rss><channel><item><title>Webhook migration</title><description>Update signatures.</description><link>https://vendor.example/notices/1</link></item></channel></rss>";
+        let notices = parse_notices(fixture, &watch.url);
+        assert_eq!(record_matches(&db, workspace, &watch, notices).await.unwrap(), 1);
+        assert_eq!(record_matches(&db, workspace, &watch, parse_notices(fixture, &watch.url)).await.unwrap(), 0);
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM workspace_actions WHERE workspace_id=?")
+            .bind(workspace)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn claim_scheduled_failures_stay_visible_with_last_and_next_runs() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash("scheduled-failure-token"))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command,schedule_minutes) VALUES(?,?,?,?,?,?,?,?)")
+            .bind(workspace)
+            .bind("Failure fixture")
+            .bind("https://vendor.example/feed.xml")
+            .bind("webhook")
+            .bind("Maya")
+            .bind("sdk 2.0")
+            .bind("pnpm test")
+            .bind(60)
+            .execute(&db)
+            .await
+            .unwrap();
+        let watch: i64 = sqlx::query_scalar("SELECT id FROM workspace_watches")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        record_scheduled_status(
+            &db,
+            workspace,
+            watch,
+            "2026-08-29T12:00:00Z",
+            "2026-08-29T13:00:00Z",
+            Some("Could not reach this public feed."),
+        )
+        .await
+        .unwrap();
+        let status: (Option<String>, Option<String>, Option<String>) = sqlx::query_as("SELECT last_scheduled_at, next_run_at, last_schedule_error FROM workspace_watches WHERE id=?")
+            .bind(watch)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(status.0.as_deref(), Some("2026-08-29T12:00:00Z"));
+        assert_eq!(status.1.as_deref(), Some("2026-08-29T13:00:00Z"));
+        assert_eq!(status.2.as_deref(), Some("Could not reach this public feed."));
+    }
+
+    #[tokio::test]
+    async fn claim_scheduled_notification_destination_is_optional_and_public() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        let token = "n".repeat(64);
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash(&token))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command) VALUES(?,?,?,?,?,?,?)")
+            .bind(workspace)
+            .bind("Notification fixture")
+            .bind("https://1.1.1.1/feed")
+            .bind("webhook")
+            .bind("Maya")
+            .bind("sdk 1.0")
+            .bind("npm test")
+            .execute(&db)
+            .await
+            .unwrap();
+        let watch: i64 = sqlx::query_scalar("SELECT id FROM workspace_watches")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let app = App {
+            db,
+            build: "test".to_owned(),
+            limiter: Arc::new(Mutex::new(HashMap::new())),
+            trust_forwarded_for: false,
+        };
+        let configured = configure_watch_schedule(
+            State(app),
+            bearer(&token),
+            Path(watch),
+            Json(ScheduleConfig {
+                every_minutes: 30,
+                notification_url: Some("https://1.1.1.1/run-summary".to_owned()),
+            }),
+        )
+        .await
+        .unwrap()
+        .0;
+        assert_eq!(configured.notification_url.as_deref(), Some("https://1.1.1.1/run-summary"));
     }
 
     #[test]

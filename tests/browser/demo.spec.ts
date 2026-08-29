@@ -62,7 +62,7 @@ test('keyboard navigation exposes the skip link and can acknowledge a demo actio
   await expect(page.locator('[data-action="a1"]')).toBeFocused()
 })
 
-test('offline scan gives a useful next step without making a request', async ({ page, context }) => {
+test('@claim:online-feed-scans offline scan gives a useful next step without making a request', async ({ page, context }) => {
   await page.goto('/demo')
   await context.setOffline(true)
   await page.getByRole('button', { name: 'Scan watched feeds' }).click()

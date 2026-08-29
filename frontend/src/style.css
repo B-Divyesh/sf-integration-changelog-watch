@@ -377,6 +377,14 @@ code {
 .watches small {
   color: var(--muted);
 }
+.schedule-state {
+  color: var(--indigo) !important;
+  font-weight: 700;
+}
+.schedule-error {
+  color: var(--rose) !important;
+  font-weight: 700;
+}
 .text-button {
   border: 0;
   background: transparent;

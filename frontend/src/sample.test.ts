@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { sampleActions, sampleWatches } from './sample'
 import { actionCsv } from './csv'
 
@@ -12,5 +13,10 @@ describe('sample workspace', () => {
     expect(rows[0]).toContain('"title"')
     expect(rows).toHaveLength(sampleActions.length + 1)
     expect(rows[1]).toContain('Stripe retires legacy webhook event format')
+  })
+  it('prevents the abstract Hosted workspace scope heading from returning', () => {
+    const copy = readFileSync(new URL('./main.ts', import.meta.url), 'utf8')
+    expect(copy).toContain('Hosted workspace limits')
+    expect(copy).not.toContain('Hosted workspace scope')
   })
 })

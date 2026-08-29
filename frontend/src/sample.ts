@@ -1,4 +1,4 @@
-export type Watch = {id:string|number; vendor:string; url:string; keywords:string; owner:string; version:string; command:string; lastScan?:string}
+export type Watch = {id:string|number; vendor:string; url:string; keywords:string; owner:string; version:string; command:string; lastScan?:string; scheduleMinutes?:number; lastScheduledAt?:string; nextRunAt?:string; lastScheduleError?:string; notificationUrl?:string}
 export type Action = {id:string|number; watchId:string|number; title:string; excerpt:string; matched:string; url:string; owner:string; version:string; command:string; acknowledged:boolean; seenAt:string}
 
 export const sampleWatches: Watch[] = [

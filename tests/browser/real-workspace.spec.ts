@@ -27,6 +27,18 @@ test('real workspace renders the server action schema and acknowledges its numer
   await expect.poll(() => acknowledged).toBe(true)
 })
 
+test('a scheduled watch shows its consent, run status, failure, and stop control', async ({ page }) => {
+  const watch = { id: 7, vendor: 'Scheduled vendor', url: 'https://vendor.example/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 3.0', command: 'npm test', scheduleMinutes: 60, lastScheduledAt: '2026-08-29T12:00:00Z', nextRunAt: '2026-08-29T13:00:00Z', lastScheduleError: 'Could not reach this public feed.', notificationUrl: 'https://notify.example/runs' }
+  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'z'.repeat(64) }) }))
+  await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([watch]) }))
+  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
+  await page.goto('/')
+  await expect(page.getByText('Scheduled every 60 minutes.')).toBeVisible()
+  await expect(page.getByText('Last run error: Could not reach this public feed.')).toBeVisible()
+  await expect(page.getByText('Run summaries: https://notify.example/runs')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Stop scheduled scans for Scheduled vendor' })).toBeVisible()
+})
+
 test('@claim:workspace-boundary workspace tokens isolate records, reject anonymous callers, and block private feeds', async ({ page }) => {
   await page.goto('/privacy')
   const result = await page.evaluate(async () => {
@@ -53,6 +65,25 @@ test('@claim:workspace-boundary workspace tokens isolate records, reject anonymo
     }
   })
   expect(result).toEqual({ unauthenticated: 401, firstWatch: 201, privateFeed: 400, secondWatches: 200, secondWorkspaceWatchCount: 0 })
+})
+
+test('@claim:no-account-or-payment a fresh visitor creates and uses a workspace without signup, billing, or external requests', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', request => requests.push(request.url()))
+  await page.goto('/')
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  const status = await page.evaluate(async () => {
+    const token = localStorage.getItem('icw:workspace-token')!
+    return fetch('/api/watches', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ vendor: 'No account fixture', url: 'https://1.1.1.1/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 1.0', command: 'npm test' }),
+    }).then(response => response.status)
+  })
+  expect(status).toBe(201)
+  const origin = new URL(page.url()).origin
+  expect(requests.every(url => new URL(url).origin === origin)).toBe(true)
+  expect(requests.some(url => /checkout|billing|payment|license/i.test(url))).toBe(false)
 })
 
 test('@claim:hosted-watch-limit saves three watches and explains the fourth-watch limit', async ({ page }) => {
@@ -132,14 +163,16 @@ test('@claim:api-contract covers the documented API methods, workspace boundary,
     const imported = await fetch('/api/watches/import', { method: 'POST', headers, body: JSON.stringify({ watches: [{ ...watch, vendor: 'Imported contract fixture' }] }) }).then(async response => ({ status: response.status, body: await response.json() as Array<{ id: number }> }))
     const actions = await fetch('/api/actions', { headers })
     const missingAction = await fetch('/api/actions/999999', { method: 'POST', headers, body: JSON.stringify({ acknowledged: true }) })
+    const scheduled = await fetch(`/api/watches/${imported.body[0].id}/schedule`, { method: 'PUT', headers, body: JSON.stringify({ everyMinutes: 60, notificationUrl: null }) })
+    const stoppedSchedule = await fetch(`/api/watches/${imported.body[0].id}/schedule`, { method: 'DELETE', headers })
     // Import is documented to replace the watch set. Use the returned watch
     // ID; a serial SQLite run may reuse the old ROWID, while concurrent
     // workspace creation will not.
     const deleted = await fetch(`/api/watches/${imported.body[0].id}`, { method: 'DELETE', headers })
     const scan = await fetch('/api/scan', { method: 'POST', headers })
-    return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, imported: imported.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
+    return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, imported: imported.status, actions: actions.status, missingAction: missingAction.status, scheduled: scheduled.status, stoppedSchedule: stoppedSchedule.status, deleted: deleted.status, scan: scan.status }
   })
-  expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, imported: 200, actions: 200, missingAction: 404, deleted: 204, scan: 200 })
+  expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, imported: 200, actions: 200, missingAction: 404, scheduled: 200, stoppedSchedule: 200, deleted: 204, scan: 200 })
 })
 
 test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }, testInfo) => {
