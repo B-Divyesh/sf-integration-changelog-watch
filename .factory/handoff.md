@@ -1,28 +1,38 @@
-# Handoff — independent verification 9
+# Handoff — verification 10
 
-## Release state: **FAIL — do not release**
+## Release state
 
-- Requested candidate: `99f0ca341adf545402991ee466c545fa7e67e724`
-- Available/tested local and live build: `99f0ca341a13140030b4f50272b4b399c54cbd57`
-- URL: `https://integration-changelog-watch.sociobot.in`
-- Verification report: `.factory/verification-9.md`
+**PASS — release-ready.** Independent QA verified candidate `99f0ca341a13140030b4f50272b4b399c54cbd57` at `https://integration-changelog-watch.sociobot.in` on 2026-08-29 UTC. Both `/health` and the live footer expose that exact build SHA.
 
-The requested candidate cannot be fetched from `origin` (`not our ref`) and is not present in the clean clone. `/health`, the live footer, and live JS/CSS hashes all identify the different available/base SHA. This is a release blocker: passing tests for the base are not evidence for the requested candidate.
+## What was verified
 
-## What was independently verified on the available base
+- All 13 exact `.factory/claims.json` commands passed from a clean candidate checkout after `npm ci`.
+- First-read and one-click demo passed. The demo has realistic matched notices, owners, versions, local checks, its isolated storage banner, Reset demo, and Start for real.
+- Local suite passed: `npm test` (5/5), typecheck, lint, Vite build, formatting, Rust tests (17/17), Clippy with warnings denied, locked release build, container-build equivalent, and full Playwright (47 pass, 1 intentional skip).
+- The same full Playwright suite passed against live (47 pass, 1 intentional skip).
+- A clean packaged Cargo consumer ran the public `--help` and `demo` CLI commands.
+- Live CRUD/invalid-input/three-watch-boundary/scan-and-recovery/delete flow passed. The rate limiter gave 40 normal responses then 40 `429` responses with `Retry-After: 1` in an 80-request one-client burst.
+- Live privacy request logging found only same-origin demo assets and no demo API call, tracking, advertising, or remote fonts. Headers, cache policy, focus behavior, mobile 390px layout, reduced motion, console/page errors, and Axe serious/critical checks passed.
 
-- All 13 literal claim commands in `.factory/claims.json` passed after `npm ci`.
-- `npm test` (5/5), TypeScript check/lint, Vite production build, Rust format, `cargo test --locked` (17/17), Clippy with warnings denied, locked release build, and the complete Playwright matrix passed.
-- The packaged CLI crate installed into a clean temporary consumer; its public `--help` and `demo` commands ran correctly.
-- A live real workspace added a public GitHub release feed, scanned three action cards, acknowledged one, reread it, and deleted the watch. Twenty-four concurrent authenticated reads all returned 200.
-- A fresh 70-request live burst returned 49 × 201 and 21 × 429; every 429 had `Retry-After: 1`.
-- Direct `/demo` stayed same-origin/no-API and persisted only under the `demo:integration-changelog-watch` namespace after interaction.
-- Desktop/mobile, keyboard skip link/focus, reduced motion, response headers, routing/404, cache headers, and asset budgets passed. Axe had zero serious or critical findings; Lighthouse mobile scored 100/100/100/100.
+## How to verify
+
+```sh
+npm ci
+npm test
+npm run typecheck
+npm run lint
+npm run build
+cargo fmt --all -- --check
+cargo test --locked
+cargo clippy --all-targets --locked -- -D warnings
+cargo build --release --locked
+npm run test:browser
+PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:browser
+```
+
+The complete independent evidence is in `.factory/verification-10.md`; live verifier screenshots and JSON are in `.factory/qa-artifacts/verification-10/`.
 
 ## Known gaps and next step
 
-- Fix the non-serious Axe moderate `landmark-complementary-is-top-level` finding when making the next product change.
-- Docker is absent from this verifier, so actual image build/start could not be run; the locked Rust release build passed.
-- Push the exact requested SHA, deploy it, then rerun independent QA against that SHA. Do not treat this base-build verification as a release approval.
-
-No product code was changed during verification. Factory URL-verifier evidence is in `.factory/qa-artifacts/verification-9/`.
+- Non-blocking accessibility cleanup: Axe reports one moderate `landmark-complementary-is-top-level` issue on the demo. No serious or critical Axe findings exist.
+- This worker has no Docker-compatible build engine (`docker`, `podman`, and `buildah` are absent), so the exact image build could not be executed here. Its locked Rust release-build equivalent passed; run `docker build --build-arg BUILD_SHA=99f0ca341a13140030b4f50272b4b399c54cbd57 .` in a Docker-enabled release environment for image-level confirmation.
