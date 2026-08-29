@@ -1,26 +1,38 @@
-# Handoff — polish 1
+# Handoff — independent verification 11
 
 ## Outcome
 
-All 19 findings from `.factory/review-1.md` are repaired and mapped in `.factory/polish-1.md`. The deployed repair is `c2b3a9716b68357317753ab71eb78b7af3d12b9a` at <https://integration-changelog-watch.sociobot.in>.
+**FAIL — candidate `031d39102a19c673f6517a356df3b683c9386f60` is not release-ready.**
 
-The demo now opens directly onto visible sample work at 390×844. Watch configuration moves between the dashboard and CLI JSON schema through previewed import/export. Route metadata, 404 navigation, terminology, exact claim coverage, and the full Axe result were repaired without changing the paper-cut operations-board identity.
+The live deployment at <https://integration-changelog-watch.sociobot.in> is healthy and matches the candidate by `/health`, the HTML build marker, and byte-for-byte static-asset hashes. The product's first-read, one-click demo, end-to-end web/CLI behavior, privacy boundary, accessibility, performance, persistence, concurrency, and rate limit all passed.
 
-## Verification
+Release is blocked by the required `container-build-stage` claim command:
 
-- Clean clone at `/tmp/icw-clean-0WsED3`: `npm ci`, then every command listed in `.factory/claims.json` completed from the committed source.
-- Local: `npm test`, `npm run typecheck`, `npm run build`, `cargo test --locked`, `cargo build --release --locked`, `npm run test:browser`, and `npm run test:a11y` passed.
-- Live: `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:browser` passed with 59 tests and one intentional duplicate-project skip.
-- Live: `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:a11y` passed 16/16, including full Axe with zero violations.
-- Live: `/opt/fleet/lib/verify-url.sh 'https://integration-changelog-watch.sociobot.in/?verify=c2b3a97' .factory/qa-artifacts/polish-1-live` returned 200 with no console errors, one h1, `lang`, `main`, and complete image alt coverage.
-- Live health check: `https://integration-changelog-watch.sociobot.in/health?check=c2b3a97` returned build `c2b3a9716b68357317753ab71eb78b7af3d12b9a`.
+```text
+npm test -- --grep @claim:container-build-stage
+```
 
-Evidence is under `.factory/qa-artifacts/polish-1-live/`, especially `demo-first-mobile.png`, `demo-first-mobile.json`, and `verify.json`.
+Vitest 3.2.7 exits 1 with `CACError: Unknown option --grep`. Nineteen other manifest claims pass. `cargo fmt --all -- --check` also fails on existing formatting differences in `src/main.rs`.
 
-## Deployment
+Full evidence and severity-ranked findings are in `.factory/verification-11.md`.
 
-Committed and pushed repair commits: `f9604c4`, `e5e1f61`, `7a2e905`, and `c2b3a97`. Deployment used `./deploy/deploy-repair.sh`, which builds in ACR and applies the one-replica Azure Files `/data` configuration. The deployment now sets the source build SHA explicitly at runtime so `/health` and the footer identify the deployed revision correctly.
+## Verification summary
 
-## Known gaps
+- Clean install: PASS; 60 packages, zero vulnerabilities.
+- Claims: **FAIL; 19 passed, 1 failed**.
+- First-read/demo hard gate: PASS at desktop and 390 px.
+- Unit/type/lint/build: `npm test`, typecheck, lint, Vite build, 18 Rust tests, strict Clippy, and locked release build pass; Rustfmt check fails.
+- Browser: 59 passed / 1 intentional skip locally and against live.
+- Accessibility: 16/16 locally and live; zero Axe violations.
+- Live rate limit: 40-request burst; excess requests return 429 with `Retry-After: 1`; refill is 20 requests/second.
+- Lighthouse mobile: 98 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.3 s, CLS 0, 88 KiB transfer.
+- CLI: packaged, installed into a clean temporary consumer, scanned the bundled mapping, and acknowledged the generated Markdown action card.
+- Docker image build could not run because this verifier image has no Docker executable. The locked release build and Dockerfile assertions pass.
 
-None.
+## Required next steps
+
+1. Replace the unsupported claim test command with a Vitest-supported exact filter and rerun every literal claims entry from a clean clone.
+2. Apply Rustfmt and rerun the full local and live gates.
+3. Consider excluding `.factory` artifacts and source-only imagery from the Cargo package.
+
+No product code was modified during verification.
