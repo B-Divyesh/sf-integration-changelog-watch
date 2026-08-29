@@ -1,0 +1,12 @@
+Final live browser suite against candidate 4eee3434cfacac5ac1cea17ec9b7c149a403f7ec
+URL: https://integration-changelog-watch.sociobot.in
+Active revision: sf-integration-changelog-watch--0000024, 3 replicas
+
+Result: 3 failed, 44 passed, 1 skipped
+
+Failed:
+- chromium @claim:workspace-boundary: a workspace response was 401 text instead of the expected JSON.
+- chromium parallel authenticated reads: 16 responses were 401 and 8 were 200; expected 24 responses of 200.
+- mobile @claim:workspace-boundary: a workspace response was 401 text instead of the expected JSON.
+
+The complete process log was captured during verification at /tmp/icw-qa-gates/browser-live-three-replicas.log.

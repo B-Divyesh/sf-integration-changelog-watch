@@ -1,0 +1,49 @@
+{
+  "candidate": "4eee3434cfacac5ac1cea17ec9b7c149a403f7ec",
+  "liveHealthBuild": "4eee3434cfacac5ac1cea17ec9b7c149a403f7ec",
+  "azure": {
+    "revision": "sf-integration-changelog-watch--0000024",
+    "image": "sociobotregistry.azurecr.io/sf-integration-changelog-watch:4eee3434cfac",
+    "minReplicas": 1,
+    "maxReplicas": 3,
+    "runningReplicas": 3,
+    "volumes": null,
+    "volumeMounts": null
+  },
+  "freshLiveWorkspace": {
+    "create": 201,
+    "addWatch": 201,
+    "firstScan": 401,
+    "firstActionsRead": 401,
+    "secondScan": 200,
+    "secondScanNewActions": 10,
+    "parallelReadStatuses": {
+      "200": 12,
+      "401": 12
+    }
+  },
+  "coldRealBrowserLoads": {
+    "attempts": 6,
+    "eachApiStatuses": {
+      "POST /api/workspaces": 201,
+      "GET /api/watches": 401,
+      "GET /api/actions": 200
+    },
+    "eachVisibleNotice": "Your private workspace could not load. Check your connection, then reload.",
+    "eachHad401ConsoleError": true
+  },
+  "rateLimits": {
+    "configuredBurst": 40,
+    "local80RequestBurst": {
+      "401": 40,
+      "429": 40,
+      "retryAfter": "1"
+    },
+    "live150RequestBurst": {
+      "elapsedMs": 542,
+      "401": 120,
+      "429": 30,
+      "retryAfter": "1"
+    }
+  }
+}

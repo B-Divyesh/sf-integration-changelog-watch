@@ -1,0 +1,69 @@
+{
+  "mobileFirst": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "h1": "Turn vendor changes into owned actions",
+    "lede": "For engineers who maintain payment, auth, analytics, or messaging integrations.",
+    "button": {
+      "text": "Try it with sample data",
+      "x": 16,
+      "y": 373.9375,
+      "width": 241.671875,
+      "height": 46,
+      "bottom": 419.9375
+    },
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "notice": "Your private workspace could not load. Check your connection, then reload.",
+    "api": [
+      {
+        "path": "/api/workspaces",
+        "status": 201
+      },
+      {
+        "path": "/api/watches",
+        "status": 401
+      },
+      {
+        "path": "/api/actions",
+        "status": 200
+      }
+    ],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 ()"
+    ]
+  },
+  "directDemo": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "url": "https://integration-changelog-watch.sociobot.in/demo",
+    "banner": "Demo — sample data, nothing is saved Reset demoStart for real",
+    "actions": 2,
+    "watches": 3,
+    "storage": [],
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "requests": [
+      "https://integration-changelog-watch.sociobot.in/demo",
+      "https://integration-changelog-watch.sociobot.in/assets/index-BFdh3OIX.js",
+      "https://integration-changelog-watch.sociobot.in/assets/index-DM5PYJWV.css",
+      "https://integration-changelog-watch.sociobot.in/paper-cut-hero.webp"
+    ],
+    "api": [],
+    "thirdParty": [],
+    "consoleErrors": [],
+    "pageErrors": [],
+    "axeSeriousCritical": [],
+    "undersizeTargets": [
+      {
+        "text": "Skip to content",
+        "width": 121.515625,
+        "height": 24
+      }
+    ]
+  }
+}
