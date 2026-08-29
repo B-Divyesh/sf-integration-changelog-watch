@@ -1175,13 +1175,10 @@ fn rate_limit_client_ip(
     socket_peer: IpAddr,
     trust_forwarded_for: bool,
 ) -> IpAddr {
-    let peer_is_ingress = match socket_peer {
-        IpAddr::V4(address) => address.is_private() || address.is_loopback(),
-        IpAddr::V6(address) => {
-            address.is_unique_local() || address.is_unicast_link_local() || address.is_loopback()
-        }
-    };
-    if !trust_forwarded_for || !peer_is_ingress {
+    // ACA's observed socket peer is a public ingress address, so private-IP
+    // heuristics cannot establish proxy trust. The platform-provided app name
+    // is the trust boundary: generic/direct runs never accept this header.
+    if !trust_forwarded_for {
         return socket_peer;
     }
     headers
@@ -1801,7 +1798,7 @@ mod tests {
             );
             request
                 .extensions_mut()
-                .insert(ConnectInfo(SocketAddr::from(([10, 0, 0, 12], 4567))));
+                .insert(ConnectInfo(SocketAddr::from(([198, 51, 100, 200], 4567))));
             let response = app.clone().oneshot(request).await.unwrap();
             if response.status().is_success() {
                 allowed += 1;
