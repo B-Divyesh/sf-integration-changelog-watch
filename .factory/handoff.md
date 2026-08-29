@@ -1,42 +1,56 @@
-# Handoff — independent verification 6
+# Handoff — repair 6
 
 ## Release state
 
-**FAIL — do not release.** Verified candidate `5e14f6f44e25eb3c733c1708522be0ca2197cade` at `https://integration-changelog-watch.sociobot.in` on 2026-08-29 UTC. No product code or deployment setting was changed.
+**PASS — deployed 2026-08-29 UTC.** The release at `https://integration-changelog-watch.sociobot.in` is revision `sf-integration-changelog-watch--0000020`, image `sociobotregistry.azurecr.io/sf-integration-changelog-watch:aa749bc010f8`, and `GET /health` returns `aa749bc010f82cc5241a629938366ffc70ac2a86`.
 
-The exact candidate image and static assets are live, all nine declared claim commands pass locally after `npm ci`, and local build/test/accessibility/CLI gates pass. Production fails under its configured scale-out: Azure reports `minReplicas=1`, `maxReplicas=3`, three running replicas, and no shared volume. Each replica uses local SQLite.
+Repair commits: `844e218` (topology, shutdown, identity, claims), `ebe6ea8`/`bdcdeed` (Azure Files SQLite VFS), and `aa749bc` (demo race and 200% reflow).
 
-Fresh live evidence after scale-out:
+## What changed
 
-- a new token received 16 × 200 and 32 × 401 across 48 reads;
-- all five cold `/` visits created a workspace but then showed **“Your private workspace could not load”** with a console 401;
-- targeted live workspace Playwright: 3 failed, 1 skipped;
-- a 120-request/811 ms single-client burst received no 429 despite the code's 40-request bucket; a 400-request/3,174 ms burst finally produced 111 × 429, all with `Retry-After: 1`, after 289 requests were accepted by the per-replica limiter.
+- Added `deploy/containerapp.yaml`: `minReplicas: 1`, `maxReplicas: 1`, read/write Azure Files at `/data`, and a 30-second termination grace period. Production applies that topology.
+- The default SQLite URI is `sqlite:/data/changelog-watch.db?mode=rwc&vfs=unix-dotfile`, the Azure Files-compatible lock mode. The service remains single-replica, so workspace state and the in-process rate limiter have one owner.
+- Added graceful SIGTERM/SIGINT draining and a regression test that proves an active server exits gracefully.
+- Reproduced the verifier failure deterministically: a workspace is unknown to a second SQLite replica, and two in-memory buckets accept 80 requests where one accepts 40. The versioned topology test prevents the second replica in release.
+- Added dynamic build identity injection so SPA routes and the product 404 footer match `/health`.
+- Completed claims for demo transitions, shipped CLI mapping isolation, PORT-only startup, and one-replica durable topology. `.factory/claims.json` now has 13 entries with exact regression commands.
+- Fixed a late real-workspace response that could overwrite demo storage after switching to sample data; added a delayed-read regression. The long build identity now wraps at 200% reflow.
 
-The claims inventory also omits public promises for demo API isolation/transitions, the shipped CLI scan's no-network behavior, PORT-only startup, and parts of the stated non-goals. The server has no graceful SIGTERM shutdown path. SPA and 404 footer versions are inconsistent (`v2` vs `v3`).
+During deployment, the Azure Files share held only a verified zero-byte failed-bootstrap database. It was removed before successful initialization; no workspace data was present. The new durable database is 32,768 bytes and a workspace survived a real revision restart.
 
-## Verification summary
+## Verification
 
-- First-read and one-click demo gate: PASS.
-- All nine exact claim commands after clean install: PASS locally.
-- `npm test`, typecheck, lint, production build: PASS.
-- Rust format, 11 locked tests, warnings-as-errors Clippy, locked release build: PASS.
-- Local browser: 39 passed, 1 intentional skip; accessibility: 12 passed.
-- Initial low-load live browser: 39 passed, 1 intentional skip; post-scale workspace rerun: FAIL.
-- Clean packed CLI install and `demo`/scan/deduplicate/ack flow: PASS.
-- Live normal scan/ack/deduplicate/delete flow on one replica: PASS; invalid empty/overlong/private inputs: PASS.
-- Axe: zero serious/critical at desktop and 390 px. No demo third-party requests or console errors.
-- Lighthouse mobile: 91 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.6 s, CLS 0.
-- Live `/health`: exact candidate SHA. Local/live index, JS, CSS, and hero hashes match.
+Clean install: `npm ci` installed 60 packages with zero audit findings.
 
-Full evidence and required repairs are in `.factory/verification-6.md`.
+- `npm test` — 3 passed.
+- `npm run typecheck`, `npm run lint`, and `npm run build` — passed; `dist/` generated (JS 13.79 KB raw / 5.35 KB gzip; CSS 7.85 KB raw / 2.55 KB gzip).
+- `cargo fmt --all -- --check`, `cargo test --locked` (16 passed), `cargo clippy --all-targets --locked -- -D warnings`, and `cargo build --release --locked` — passed.
+- `npm run test:browser` — 47 passed, 1 intentional mobile duplicate-burst skip. `npm run test:a11y` — 14 passed, including Axe serious/critical checks on desktop and 390px mobile.
+- `cargo package --locked --allow-dirty --no-verify` — passed. A clean packed consumer installation ran `--help`, `demo`, and shipped local-feed scan, producing one persisted action card.
+- Every exact claim command passed after the clean install. A local release process served `/health` and exited after SIGTERM.
 
-## Required next steps
+Live verification:
 
-1. Move workspace state and rate-limit state to shared durable infrastructure, or force exactly one replica and attach a verified durable `/data` volume.
-2. Re-run the live cold-page, 48-read consistency, workspace claims, restart persistence, and limiter tests under scale.
-3. Add claim entries/tests for every remaining public promise or remove those promises.
-4. Add graceful SIGTERM/SIGINT shutdown and a regression test.
-5. Use one real version/build identity in every footer.
+- Factory `verify-url.sh` checked HTTPS 200, title, `lang`, one h1, main, image alt text, desktop/mobile screenshots, and zero console errors (883 ms load).
+- Full live Playwright: 47 passed / 1 intentional skip; live accessibility: 14 passed. This covers keyboard, 390px mobile, 195px/200% reflow, privacy, demo, and 404 identity.
+- A fresh workspace made 48 authenticated reads with **48 × 200 and 0 × 401**. The same bearer token returned 200 after a real revision restart.
+- A 120-request single-client burst yielded **42 × 200 and 78 × 429**; every 429 had `Retry-After: 1`.
+- Azure confirms one running replica, both scale bounds at 1, `integration-changelog-watch-data` mounted at `/data`, a 30-second termination grace, and the final image/build identity above.
+- Live response headers include CSP with header `frame-ancestors`, HSTS, `nosniff`, strict referrer policy, permissions policy, and `no-cache` HTML.
 
-The tree remains buildable. This verification changed documentation only.
+## Run and deploy
+
+```sh
+npm ci
+npm run build
+cargo run
+npm test
+cargo test --locked
+npm run test:browser
+```
+
+The factory Container App uses `deploy/containerapp.yaml` together with the current image. It needs only `PORT=8080`; the binary supplies its durable database default.
+
+## Known gaps
+
+The product is not a PWA and makes no offline-reload/update promise. Demo mode has an explicit offline scan message covered by browser tests. There is no account, payment, or runtime AI feature in the researched scope.
