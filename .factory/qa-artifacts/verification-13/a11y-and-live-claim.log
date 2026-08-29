@@ -1,0 +1,138 @@
+
+LOCAL ACCESSIBILITY
+
+> integration-changelog-watch@1.0.0 test:a11y
+> playwright test tests/browser/accessibility.spec.ts
+
+
+Running 18 tests using 2 workers
+(node:16130) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16129) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16129) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16130) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··················
+  18 passed (15.0s)
+LOCAL_A11Y_EXIT=0
+
+LIVE ACCESSIBILITY
+
+> integration-changelog-watch@1.0.0 test:a11y
+> playwright test tests/browser/accessibility.spec.ts
+
+
+Running 18 tests using 2 workers
+(node:16479) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16480) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16479) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16480) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+··················
+  18 passed (14.9s)
+LIVE_A11Y_EXIT=0
+
+LIVE ISOLATED API CLAIM
+
+> integration-changelog-watch@1.0.0 test:browser
+> playwright test --grep @claim:api-contract
+
+
+Running 2 tests using 2 workers
+(node:16821) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16821) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+FF
+
+  1) [chromium] › tests/browser/real-workspace.spec.ts:121:5 › @claim:api-contract covers the documented API methods, workspace boundary, success, and representative errors
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 1[39m
+
+    [33m@@ -1,10 +1,10 @@[39m
+    [2m  Object {[22m
+    [2m    "actions": 200,[22m
+    [2m    "anonymous": 401,[22m
+    [2m    "created": 201,[22m
+    [32m-   "deleted": 204,[39m
+    [31m+   "deleted": 404,[39m
+    [2m    "health": 200,[22m
+    [2m    "imported": 200,[22m
+    [2m    "missingAction": 404,[22m
+    [2m    "scan": 200,[22m
+    [2m    "updated": 200,[22m
+
+      137 |     return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, imported: imported.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
+      138 |   })
+    > 139 |   expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, imported: 200, actions: 200, missingAction: 404, deleted: 204, scan: 200 })
+          |                  ^
+      140 | })
+      141 |
+      142 | test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }, testInfo) => {
+        at /work/repo/tests/browser/real-workspace.spec.ts:139:18
+
+    Error Context: test-results/real-workspace--claim-api--8d052-s-and-representative-errors-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/real-workspace--claim-api--8d052-s-and-representative-errors-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/real-workspace--claim-api--8d052-s-and-representative-errors-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [mobile] › tests/browser/real-workspace.spec.ts:121:5 › @claim:api-contract covers the documented API methods, workspace boundary, success, and representative errors
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 1[39m
+
+    [33m@@ -1,10 +1,10 @@[39m
+    [2m  Object {[22m
+    [2m    "actions": 200,[22m
+    [2m    "anonymous": 401,[22m
+    [2m    "created": 201,[22m
+    [32m-   "deleted": 204,[39m
+    [31m+   "deleted": 404,[39m
+    [2m    "health": 200,[22m
+    [2m    "imported": 200,[22m
+    [2m    "missingAction": 404,[22m
+    [2m    "scan": 200,[22m
+    [2m    "updated": 200,[22m
+
+      137 |     return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, imported: imported.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
+      138 |   })
+    > 139 |   expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, imported: 200, actions: 200, missingAction: 404, deleted: 204, scan: 200 })
+          |                  ^
+      140 | })
+      141 |
+      142 | test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }, testInfo) => {
+        at /work/repo/tests/browser/real-workspace.spec.ts:139:18
+
+    Error Context: test-results/real-workspace--claim-api--8d052-s-and-representative-errors-mobile/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/real-workspace--claim-api--8d052-s-and-representative-errors-mobile/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/real-workspace--claim-api--8d052-s-and-representative-errors-mobile/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › tests/browser/real-workspace.spec.ts:121:5 › @claim:api-contract covers the documented API methods, workspace boundary, success, and representative errors
+    [mobile] › tests/browser/real-workspace.spec.ts:121:5 › @claim:api-contract covers the documented API methods, workspace boundary, success, and representative errors
+LIVE_API_CLAIM_EXIT=1

@@ -1,0 +1,44 @@
+
+NPM UNIT
+
+> integration-changelog-watch@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /work/repo/frontend
+
+ ✓ src/dockerfile.test.ts (4 tests) 8ms
+ ✓ src/sample.test.ts (2 tests) 18ms
+
+ Test Files  2 passed (2)
+      Tests  6 passed (6)
+   Start at  12:05:24
+   Duration  1.37s (transform 194ms, setup 0ms, collect 217ms, tests 26ms, environment 0ms, prepare 716ms)
+
+
+TYPECHECK
+
+> integration-changelog-watch@1.0.0 typecheck
+> tsc --noEmit
+
+
+LINT
+
+> integration-changelog-watch@1.0.0 lint
+> tsc --noEmit
+
+
+PRODUCTION BUILD
+
+> integration-changelog-watch@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 6 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                  1.60 kB │ gzip: 0.56 kB
+../dist/assets/index-DfDEtPLZ.css   8.80 kB │ gzip: 2.73 kB
+../dist/assets/index-Bfbb_kIh.js   19.48 kB │ gzip: 6.81 kB
+✓ built in 298ms

@@ -1,0 +1,82 @@
+HEALTH
+{"build":"f7674a134cf4081857606be255dfcf51781d3408","ok":true}
+ROOT HEADERS
+HTTP/2 200
+content-type: text/html; charset=utf-8
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+strict-transport-security: max-age=31536000; includeSubDomains
+cache-control: no-cache
+content-length: 1623
+date: Sat, 29 Aug 2026 12:15:09 GMT
+
+
+DEMO HEADERS
+HTTP/2 200
+content-type: text/html; charset=utf-8
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+strict-transport-security: max-age=31536000; includeSubDomains
+cache-control: no-cache
+content-length: 1623
+date: Sat, 29 Aug 2026 12:15:09 GMT
+
+
+JS HEADERS
+HTTP/2 200
+content-type: text/javascript
+accept-ranges: bytes
+last-modified: Sat, 29 Aug 2026 11:35:30 GMT
+content-length: 19475
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+strict-transport-security: max-age=31536000; includeSubDomains
+cache-control: public, max-age=31536000, immutable
+date: Sat, 29 Aug 2026 12:15:09 GMT
+
+
+API HEADERS
+HTTP/2 401
+content-type: text/plain; charset=utf-8
+cache-control: no-store, private
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+strict-transport-security: max-age=31536000; includeSubDomains
+content-length: 62
+date: Sat, 29 Aug 2026 12:15:09 GMT
+
+
+ROUTES
+/ 200 text/html; charset=utf-8 1623
+/demo 200 text/html; charset=utf-8 1623
+/privacy 200 text/html; charset=utf-8 1623
+/terms 200 text/html; charset=utf-8 1623
+/robots.txt 200 text/plain 92
+/sitemap.xml 200 text/xml 404
+/favicon.svg 200 image/svg+xml 268
+/apple-touch-icon.png 200 image/png 35926
+/social-card.jpg 200 image/jpeg 163227
+/missing-verifier-route 404 text/html; charset=utf-8 2019
+
+HASH MATCH
+66da54526836bb16ae7b439f5f6dbcdc2d03e071b4715d30c3e5a7415e98ba31  dist/assets/index-Bfbb_kIh.js
+66da54526836bb16ae7b439f5f6dbcdc2d03e071b4715d30c3e5a7415e98ba31  /tmp/icw-live.js
+d2942b01bf1d67e3fe36f1c76047836b920b99d1a026486d8c728739bb438636  dist/assets/index-DfDEtPLZ.css
+d2942b01bf1d67e3fe36f1c76047836b920b99d1a026486d8c728739bb438636  /tmp/icw-live.css
+fb0d415bec60a017de28d29ee05795fbf156fc3ab069dab80d3bd7dce49a252b  dist/paper-cut-hero.webp
+fb0d415bec60a017de28d29ee05795fbf156fc3ab069dab80d3bd7dce49a252b  /tmp/icw-live.webp
+
+BUNDLE SIZES
+ 19475 dist/assets/index-Bfbb_kIh.js
+  8801 dist/assets/index-DfDEtPLZ.css
+ 58974 dist/paper-cut-hero.webp
+163227 frontend/public/social-card.jpg
+250477 total
