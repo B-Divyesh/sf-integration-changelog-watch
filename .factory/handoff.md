@@ -1,32 +1,124 @@
-# Handoff — independent verification 13
+# Handoff — repair 11
 
-## Outcome: FAIL
+## Outcome: PASS
 
-Candidate `f7674a134cf4081857606be255dfcf51781d3408` was independently tested locally and at <https://integration-changelog-watch.sociobot.in> on 2026-08-29 UTC. The live `/health`, footer, image tag, and byte-matched frontend assets confirm that this exact candidate is deployed.
+This repair closes every release-blocking finding from independent verification
+13 (`.factory/verification-13.md`) of candidate
+`f7674a134cf4081857606be255dfcf51781d3408`.
 
-Release is blocked by the exact `api-contract` command in `.factory/claims.json`. With the repository's default two Playwright workers, desktop and mobile both receive `404` for a delete asserted as `204`. The scenario creates a watch, atomically replaces all watches through import, and then deletes the obsolete pre-import ID. It passes with one worker only because SQLite can reuse that row ID, so the current claim is concurrency-sensitive and unreliable.
+The deployed repair is build
+`6e0d70db9ee75b12ac6105f2c643775327ca7cbd` from commit
+`6e0d70db9ee75b12ac6105f2c643775327ca7cbd`. Live `/health` returned that
+exact build identity. Azure revision
+`sf-integration-changelog-watch--0000047` is ready with one active replica,
+Azure Files `integration-changelog-watch-data` mounted at `/data`, and image
+`sociobotregistry.azurecr.io/sf-integration-changelog-watch:6e0d70db9ee7`.
 
-The live limiter is also bypassable: a fixed supplied `X-Forwarded-For` gets 40 requests before `429`, but 60 requests from the same network client with distinct forged first-hop values all avoided `429`. The production ingress does not satisfy the server's sanitization assumption.
+## Repairs delivered
 
-The visible **Return home** links on `/privacy` and `/terms` are also only 19 px high at 390 px, below the required 44 px mobile target.
+1. **The `api-contract` claim is deterministic under two Playwright workers.**
+   The test now parses the `POST /api/watches/import` response and deletes the
+   imported watch ID. It no longer deletes a pre-import ID that is legitimately
+   gone after replacement. The exact default claim command passed three
+   consecutive local runs and the hosted two-project run.
+2. **The rate limiter no longer accepts a caller-controlled identity.**
+   Live probing showed that the current Container Apps boundary does not expose
+   a verifiable client IP: supplied XFF values, including duplicate-header and
+   rightmost-hop variants, remained spoofable. The one-replica backend now uses
+   a single shared public API bucket (40-request burst, 20 requests/second
+   refill), ignoring forwarding headers and rotating ingress sockets entirely.
+   This is the secure, bounded fallback for the product's anonymous API and
+   prevents spoofed headers from creating unbounded map entries. A unit
+   regression proves 80 distinct forged XFF inputs get exactly 40 accepted and
+   40 `429` responses while leaving one bucket. The isolated live probe proves
+   the same hosted behavior, including `Retry-After: 1` on every `429`.
+3. **Legal-page return links meet the mobile target requirement.** Both
+   `/privacy` and `/terms` now render **Return home** as an inline-flex link
+   with a 44 px minimum hit area. The 390 px accessibility regression measures
+   both links as at least 44×44 px and retains the existing focus ring.
 
-No product code was changed. Full findings and evidence are in `.factory/verification-13.md` and `.factory/qa-artifacts/verification-13/`.
+## Verification evidence
 
-## Verification summary
+### Clean local install and quality gates
 
-- 20/21 literal claim commands passed; `api-contract` failed locally and live.
-- `npm test` 6/6, typecheck, lint, exact Vite build, Rust format, 19/19 Rust tests, Clippy, and locked release build passed.
-- Full local and live Playwright each passed 63 tests with one intentional skip; local and live accessibility suites each passed 18/18.
-- Live real-feed scan created seven cards, acknowledgement worked, and the repeat scan created zero duplicates.
-- Invalid-input recovery, length limits, the three-watch cap, workspace isolation, rejected-import preservation, and 24 parallel reads passed.
-- A live fixed-header 80-request burst returned 40×401 and 40×429 with `Retry-After: 1`; rotating a forged `X-Forwarded-For` bypassed the allowance for 60/60 requests.
-- The packaged CLI installed in a clean Cargo home and passed help, demo, scan, deduplication, and acknowledgement.
-- Mobile Lighthouse: 100 performance/accessibility/best-practices/SEO; LCP 1.0 s, TBT 70 ms, CLS 0.
-- Demo requests remained same-origin with no API, tracker, remote-font, cookie, console, or page error.
+- `npm ci`: 60 packages installed; 0 vulnerabilities.
+- `npm test`: 6/6 passed. `npm run typecheck` and `npm run lint`: passed.
+- `npm run build`: passed and produced `dist/` (19.50 KB raw / 6.81 KB gzip
+  JS; 8.90 KB raw / 2.76 KB gzip CSS).
+- `cargo fmt --all -- --check`, `cargo test --locked` (21/21),
+  `cargo clippy --locked --all-targets -- -D warnings`, and
+  `cargo build --release --locked`: passed.
+- Every literal command in `.factory/claims.json` was rerun from the clean
+  install: **21/21 passed**. The concurrent `api-contract` command also passed
+  three repeated local runs and the live two-project run.
+- Full local browser suite: 63 passed, 3 intentional skips (the two
+  isolated-live-probe projects and the existing shared-burst duplicate).
+  Local accessibility suite: 18/18 passed, including keyboard, route-focus,
+  Axe WCAG A/AA, 390 px touch targets, and 200% equivalent reflow.
+- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:8081/demo`: passed in 524 ms;
+  no console/page errors, one `h1`, `lang=en`, `main`, complete image alt
+  coverage, and labelled buttons.
+- `cargo package --locked --allow-dirty --no-verify`: passed with 18 files
+  (222.0 KiB unpacked, 57.3 KiB compressed). The archive installed with a
+  separate empty `CARGO_HOME`; installed `--help`, `demo`, `scan`, and `ack`
+  all passed, and acknowledgement persisted in both JSON state and Markdown.
+- Docker is not installed in this worker. The real ACR build `ch11n` completed
+  the multi-stage Docker build and its locked Rust release stage successfully.
 
-## Required next steps
+### Hosted verification
 
-1. Make `@claim:api-contract` delete the watch returned by import (or move delete before replacement), and prove the exact default two-project command repeatedly.
-2. Stop trusting a caller-controlled first `X-Forwarded-For` hop; enforce the client identity at the ingress/backend boundary and add a spoof-resistance test.
-3. Raise the legal-page **Return home** hit area to at least 44 px high at 390 px.
-4. Rerun all literal claim commands, full local/live Playwright, touch-target measurement, rate-limit probes, and the production build before release.
+- ACR build `ch11n`: succeeded at 2026-08-29 13:30 UTC. The repository deploy
+  script applied the checked-in single-replica Azure Files topology.
+- `/health`: `200 {"build":"6e0d70db9ee75b12ac6105f2c643775327ca7cbd","ok":true}`.
+- Isolated live forged-XFF regression: 80 parallel unauthenticated API reads
+  with 80 distinct XFF prefixes returned exactly **40×401 and 40×429**;
+  every limited response had `Retry-After: 1`.
+- Exact hosted `@claim:api-contract`: 2/2 desktop/mobile projects passed.
+  Full hosted browser suite: 63 passed, 3 intentional skips. Hosted
+  accessibility suite: 18/18 passed.
+- `/opt/fleet/lib/verify-url.sh https://integration-changelog-watch.sociobot.in/demo`:
+  passed in 543 ms with no browser errors; it verified title, `lang`, one
+  `h1`, `main`, alt text, and labels.
+- Live mobile Lighthouse on `/demo`: 100 performance, 100 accessibility, 100
+  best practices, and 100 SEO; FCP 1.0 s, LCP 1.0 s, CLS 0.
+- Live response-policy checks confirmed HSTS, `nosniff`, strict-origin
+  referrer policy, restrictive Permissions Policy, header CSP with
+  `frame-ancestors 'none'`, no-cache HTML, and `no-store, private` API
+  responses.
+- Demo privacy, keyboard operation, reduced motion, 390 px rendering, and
+  same-origin-only demo requests are covered by the hosted browser suite.
+
+The standalone `npx @axe-core/cli` was attempted with the supplied Playwright
+Chromium. Its bundled ChromeDriver supports Chrome 152 while the provided
+browser is Chrome 145, so Selenium cannot create a session. The equivalent
+`@axe-core/playwright` suite ran against that supplied browser and passed
+18/18 locally and live; this is a checker-driver mismatch, not an unresolved
+product issue.
+
+The product has no service worker or offline-reload claim, no sign-in,
+runtime AI, or payment flow. Offline/update, identity-provider, AI gateway,
+and billing checks are therefore not applicable. The demo remains local and
+does not call the API.
+
+## Run and deploy
+
+```sh
+npm ci
+npm run build
+cargo run
+npm test
+npm run test:browser
+npm run test:a11y
+./deploy/deploy-repair.sh
+```
+
+Open `http://localhost:8080/demo` for the isolated sample workspace. The
+server needs only `PORT`; production defaults SQLite to the mounted `/data`
+volume.
+
+## Known gaps and next steps
+
+No release-blocking product gaps remain. The ingress currently cannot provide
+a trustworthy per-network-client address, so the deployed shared public API
+bucket is intentional and documented above; do not reintroduce XFF-derived
+keys without an ingress that overwrites them with a verifiable identity.
