@@ -296,10 +296,10 @@ async fn shutdown_signal() {
 }
 
 fn default_database_url() -> String {
-    // Azure Files does not implement SQLite's byte-range lock protocol. The
-    // deployment template enforces one replica and this process owns one
-    // connection, so disabling SQLite's cross-process lock layer is safe.
-    "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1".to_owned()
+    // Azure Files does not implement SQLite's byte-range lock protocol. Its
+    // dot-file VFS keeps SQLite's lock files in the mounted share instead.
+    // The deployment still enforces one replica for state and rate limits.
+    "sqlite:/data/changelog-watch.db?mode=rwc&vfs=unix-dotfile".to_owned()
 }
 
 fn server_port(value: Option<String>) -> u16 {
@@ -1188,12 +1188,12 @@ mod tests {
     async fn default_database_survives_restart_when_data_is_mounted() {
         assert_eq!(
             default_database_url(),
-            "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1"
+            "sqlite:/data/changelog-watch.db?mode=rwc&vfs=unix-dotfile"
         );
         let root = std::env::temp_dir().join(format!("icw-data-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
         let database = root.join("changelog-watch.db");
-        let url = format!("sqlite:{}?mode=rwc", database.display());
+        let url = format!("sqlite:{}?mode=rwc&vfs=unix-dotfile", database.display());
         let first = SqlitePoolOptions::new().connect(&url).await.unwrap();
         setup(&first).await.unwrap();
         sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
@@ -1327,7 +1327,7 @@ mod tests {
         assert_eq!(server_port(Some("9090".to_owned())), 9090);
         assert_eq!(
             default_database_url(),
-            "sqlite:/data/changelog-watch.db?mode=rwc&nolock=1"
+            "sqlite:/data/changelog-watch.db?mode=rwc&vfs=unix-dotfile"
         );
     }
 
