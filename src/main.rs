@@ -1147,8 +1147,8 @@ fn rate_limit_client_ip(headers: &HeaderMap, socket_peer: IpAddr) -> IpAddr {
         // choose the last header value before reading its rightmost hop.
         .get_all("x-forwarded-for")
         .iter()
-        .filter_map(|value| value.to_str().ok())
-        .last()
+        .rev()
+        .find_map(|value| value.to_str().ok())
         .and_then(|value| value.rsplit(',').next())
         .map(str::trim)
         .and_then(|value| value.parse::<IpAddr>().ok())
