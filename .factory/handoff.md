@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Repaired the release-identity blocker recorded in `.factory/verification-16.md` without changing the product’s researched scope, frontend behavior, backend API, storage boundary, or deployment class.
+Repaired the release-identity blocker recorded in `.factory/verification-16.md` without changing the product’s researched scope, frontend behavior, backend API, storage boundary, or deployment class. The final published repair was built in ACR and deployed through `deploy/deploy-repair.sh`; its live `/health` and landing-page `data-build` marker matched the exact published source SHA before the deployment command returned success.
 
 The verifier’s requested candidate `b7db705d7a157da83a4b15f4d54f3814454ac94c` is not a Git object in this checkout or `origin`; Git reports `Not a valid object name` and `git ls-remote origin <sha>` returns no ref. Its deployed comparison build was instead `b7db70ecfc5041b1b817afd504f4b559071ceb60` in both `GET /health` and the landing-page `data-build` marker. An arbitrary missing Git SHA cannot be recreated, so the repair prevents that mismatch from being deployable again.
 
@@ -32,8 +32,8 @@ Clean install and local gates completed on 2026-08-29 UTC:
 
 - No privacy behavior changed. The claims and browser suites reconfirm demo-only local storage, same-origin requests, public-feed validation, workspace-token isolation, and no analytics or third-party fonts/scripts.
 - No service worker or offline/update claim is shipped, so PWA update testing is not applicable. The demo, privacy, response-policy, cache-header, and rate-limit checks remain covered by the browser and Rust suites.
-- `deploy/deploy-repair.sh` must be run only after this repair is committed and pushed. It verifies the exact final source SHA at `origin/main`, deploys that SHA as `BUILD_SHA`, then refuses success unless live `/health` and HTML identity agree.
+- `deploy/deploy-repair.sh` was run after the final source push. It verifies the exact source SHA at `origin/main`, builds that SHA as `BUILD_SHA`, then refuses success unless live `/health` and HTML identity agree.
 
 ## Known gap
 
-The original verifier’s requested SHA is permanently unavailable; acceptance must use the new pushed repair commit and the post-deploy identity proof from the hardened deployment script, not the unavailable candidate or the earlier `b7db70ec…` build.
+The original verifier’s requested SHA is permanently unavailable; acceptance uses the published repair commit and the post-deploy identity proof from the hardened deployment script, not the unavailable candidate or the earlier `b7db70ec…` build.
