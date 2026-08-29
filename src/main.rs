@@ -934,14 +934,16 @@ async fn scan_watch(db: &SqlitePool, workspace: i64, watch: &WatchRow) -> Result
     } else {
         0
     };
-    sqlx::query("UPDATE workspace_watches SET last_hash=?, last_scanned=? WHERE id=? AND workspace_id=?")
-        .bind(hash)
-        .bind(Utc::now().to_rfc3339())
-        .bind(watch.id)
-        .bind(workspace)
-        .execute(db)
-        .await
-        .map_err(|_| "The server could not record this scan. Try again.".to_owned())?;
+    sqlx::query(
+        "UPDATE workspace_watches SET last_hash=?, last_scanned=? WHERE id=? AND workspace_id=?",
+    )
+    .bind(hash)
+    .bind(Utc::now().to_rfc3339())
+    .bind(watch.id)
+    .bind(workspace)
+    .execute(db)
+    .await
+    .map_err(|_| "The server could not record this scan. Try again.".to_owned())?;
     Ok(made)
 }
 
@@ -973,8 +975,8 @@ async fn run_due_schedules(app: &App) -> Result<usize, sqlx::Error> {
     for scheduled in watches {
         let watch = scheduled.as_watch();
         let ran_at = Utc::now().to_rfc3339();
-        let next_run = (Utc::now() + ChronoDuration::minutes(scheduled.schedule_minutes))
-            .to_rfc3339();
+        let next_run =
+            (Utc::now() + ChronoDuration::minutes(scheduled.schedule_minutes)).to_rfc3339();
         let result = scan_watch(&app.db, scheduled.workspace_id, &watch).await;
         let mut failure = result.as_ref().err().cloned();
         let new_actions = result.unwrap_or(0);
@@ -1343,7 +1345,10 @@ async fn send_schedule_notification(
         .await
         .map_err(|_| "Could not reach the notification destination.".to_owned())?;
     if response.status().is_redirection() {
-        return Err("The notification destination redirects. Use its final public HTTPS address instead.".to_owned());
+        return Err(
+            "The notification destination redirects. Use its final public HTTPS address instead."
+                .to_owned(),
+        );
     }
     if !response.status().is_success() {
         return Err("The notification destination returned an error response.".to_owned());
@@ -2322,11 +2327,12 @@ mod tests {
         };
 
         assert_eq!(run_due_schedules(&app).await.unwrap(), 0);
-        let unscheduled: Option<i64> = sqlx::query_scalar("SELECT schedule_minutes FROM workspace_watches WHERE id=?")
-            .bind(watch_id)
-            .fetch_one(&app.db)
-            .await
-            .unwrap();
+        let unscheduled: Option<i64> =
+            sqlx::query_scalar("SELECT schedule_minutes FROM workspace_watches WHERE id=?")
+                .bind(watch_id)
+                .fetch_one(&app.db)
+                .await
+                .unwrap();
         assert_eq!(unscheduled, None);
 
         let scheduled = configure_watch_schedule(
@@ -2384,13 +2390,24 @@ mod tests {
             .unwrap();
         let fixture = "<rss><channel><item><title>Webhook migration</title><description>Update signatures.</description><link>https://vendor.example/notices/1</link></item></channel></rss>";
         let notices = parse_notices(fixture, &watch.url);
-        assert_eq!(record_matches(&db, workspace, &watch, notices).await.unwrap(), 1);
-        assert_eq!(record_matches(&db, workspace, &watch, parse_notices(fixture, &watch.url)).await.unwrap(), 0);
-        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM workspace_actions WHERE workspace_id=?")
-            .bind(workspace)
-            .fetch_one(&db)
-            .await
-            .unwrap();
+        assert_eq!(
+            record_matches(&db, workspace, &watch, notices)
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            record_matches(&db, workspace, &watch, parse_notices(fixture, &watch.url))
+                .await
+                .unwrap(),
+            0
+        );
+        let count: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM workspace_actions WHERE workspace_id=?")
+                .bind(workspace)
+                .fetch_one(&db)
+                .await
+                .unwrap();
         assert_eq!(count, 1);
     }
 
@@ -2445,7 +2462,10 @@ mod tests {
             .unwrap();
         assert_eq!(status.0.as_deref(), Some("2026-08-29T12:00:00Z"));
         assert_eq!(status.1.as_deref(), Some("2026-08-29T13:00:00Z"));
-        assert_eq!(status.2.as_deref(), Some("Could not reach this public feed."));
+        assert_eq!(
+            status.2.as_deref(),
+            Some("Could not reach this public feed.")
+        );
     }
 
     #[tokio::test]
@@ -2500,7 +2520,10 @@ mod tests {
         .await
         .unwrap()
         .0;
-        assert_eq!(configured.notification_url.as_deref(), Some("https://1.1.1.1/run-summary"));
+        assert_eq!(
+            configured.notification_url.as_deref(),
+            Some("https://1.1.1.1/run-summary")
+        );
     }
 
     #[test]

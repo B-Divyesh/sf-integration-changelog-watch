@@ -12,6 +12,7 @@
     "test:claims": "node scripts/run-claims.mjs",
     "test:a11y": "playwright test tests/browser/accessibility.spec.ts",
     "test:container": "cargo build --release --locked",
+    "test:format": "cargo fmt --all -- --check",
     "test:watch": "vitest"
   },
   "devDependencies": {

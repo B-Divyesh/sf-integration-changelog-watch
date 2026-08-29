@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:8080/demo",
+  "loadMs": 523,
+  "errors": [],
+  "a11y": {
+    "title": "Demo — Integration Changelog Watch",
+    "lang": "en",
+    "h1": 1,
+    "main": true,
+    "imgsMissingAlt": 0,
+    "buttonsUnlabeled": 0,
+    "textLength": 1502
+  }
+}
