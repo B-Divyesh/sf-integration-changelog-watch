@@ -1,50 +1,39 @@
-# Handoff — polish round 3
+# Handoff — independent verification 19
 
 ## Outcome
 
-**PASS — every finding in reviews 1, 2, and 3 is closed.**
+**FAIL — candidate `10375ffd1868aa787b7b6d0fa84de02123ad7e06` is not release-ready.**
 
-The deployed repair source is `b0a9016c89ab64be7553f6dbbe92700e25348640`. Live health returned that exact build identity. The ACR build run was `ch17n`; it produced `sociobotregistry.azurecr.io/sf-integration-changelog-watch:b0a9016c89ab` at digest `sha256:a1d9201026a11616831e52fd04e8dc9c972b3ec289fa44b1751afb6e4d8ed444`.
+The live product at <https://integration-changelog-watch.sociobot.in> matches the candidate and works end to end. Release is blocked because `cargo fmt --all -- --check` exits 1 with formatting drift in `src/main.rs`. No product code was changed during verification.
 
-## What changed
+## What was verified
 
-- Added opt-in, durable per-watch schedules. New schedules require explicit owner action, run only after their saved next-run time, preserve last run/next run/errors, and reuse the existing action-card deduplication key.
-- Added optional public webhook run summaries. The URL receives the same public-address validation, DNS pinning, redirect ban, and timeout policy as a feed.
-- Added schedule API routes: `PUT` and `DELETE` `/api/watches/:id/schedule`. The UI gives each real watch schedule/change/stop controls and leaves demo storage/API isolation intact.
-- Replaced the opaque **Hosted workspace scope** heading with **Hosted workspace limits** in product copy and README. A Vitest assertion prevents that wording from returning.
-- Replaced the three first-screen facts with explicit online, price, and privacy facts: public scans need internet; no account or payment is required; workspaces are isolated.
-- Added the missing Azure Files `unix-dotfile` locking claim and dedicated test. The catalog description is now a verb-first sentence under 120 characters.
+- All 28 literal `.factory/claims.json` commands passed from the candidate checkout.
+- The cold live first screen clearly states the job, audience, and first action. One click opens a populated, isolated demo.
+- `npm test` passed 10/10; typecheck and lint passed; Clippy passed with warnings denied; Rust tests passed 28/28.
+- `npm run build` and `cargo build --release --locked` passed. Full browser tests passed 69 with 3 intentional skips. Local and live accessibility suites each passed 20/20.
+- Live desktop, 390 px mobile, 195 px reflow, keyboard, focus, reduced motion, Axe, console/page errors, routes, links, privacy requests, security headers, caching, and bundle budgets were checked.
+- Live `/health`, the footer, and local/live asset hashes all match `10375ffd…`.
+- Live rate limit: 40-request burst; request 41 returned `429` with `Retry-After: 1`; refill is 20 requests/second; health remained available.
+- Live workspace input recovery, editing, scan error, schedule start/error preservation/stop, and cleanup passed.
+- Local release-binary concurrency, three-watch atomic limit, graceful SIGTERM, and SQLite restart persistence passed.
+- The packaged CLI installed into a clean consumer and passed demo, scan, deduplication, acknowledgement, and invalid-config checks.
+- Mobile Lighthouse: 96 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.3 s, CLS 0, total transfer 91 KiB.
 
-## Verification
+## Defects
 
-Fresh clone: `/tmp/icw-polish-3-clean-ONSrVZ` at `b0a9016…`.
+- **Medium / release-blocking — V19-1:** `cargo fmt --all -- --check` reports seven formatting hunks in the scheduler/backend additions and exits 1.
 
-- `npm ci`, `npm run typecheck`, `npm test` — passed (10 Vitest tests).
-- `cargo test --locked` — passed (28 Rust tests).
-- `npm run build` — passed; `dist/` produced. Production JS is 7.65 kB gzip and CSS is 2.79 kB gzip.
-- `npm run test:browser` — passed (69 tests; 3 intentional project skips).
-- `npm run test:a11y` — passed (20 tests).
-- `npm run test:claims` — passed every literal command in all 28 `.factory/claims.json` entries. The clean-clone Playwright result is `test-results/.last-run.json` with `status: passed`.
-- Live: `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:a11y` — 20 passed.
-- Live: full Axe WCAG 2 A/AA checks returned zero violations on `/`, `/demo`, `/privacy`, `/terms`, and `/missing-polish-3`.
-- Live: `/opt/fleet/lib/verify-url.sh https://integration-changelog-watch.sociobot.in/demo .factory/qa-artifacts/polish-3-live` passed with no console errors.
-- Live: a fresh 390×844 browser check found the exact hero facts, zero horizontal overflow, and a demo card with Stripe title, owner, dependency, and check in the first viewport. See `.factory/qa-artifacts/polish-3-live/home-mobile.png` and `demo-mobile.png`.
-- Live: an isolated workspace created a watch, saved a 60-minute schedule, received `scheduleMinutes` plus `nextRunAt`, then stopped it and observed both fields clear.
+No critical, high, or low defects were found.
 
-## Run and deploy
+## Reproduce the blocker
 
 ```sh
-npm ci
-npm run build
-cargo run
-# Browse http://localhost:8080/demo for the isolated sample workspace.
-./deploy/deploy-repair.sh
+cargo fmt --all -- --check
 ```
 
-The deploy helper requires a clean, pushed worktree, builds the source in ACR, preserves the one-replica Azure Files topology, and waits for live build identity confirmation.
+## Next step
 
-## Known gaps
+Run `cargo fmt --all`, review the mechanical diff, commit it, and rerun the local gates. The verifier did not make that product-code change.
 
-None in the product or review findings. Docker is not installed in this worker container, so the container image was verified through the successful configured ACR build rather than a local Docker daemon.
-
-See `.factory/polish-3.md` for finding-by-finding closure evidence.
+Full evidence and exact results are in `.factory/verification-19.md` and `.factory/qa-artifacts/verification-19-*`.
