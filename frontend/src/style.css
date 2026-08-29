@@ -531,6 +531,13 @@ code {
     serif;
   margin-top: 36px;
 }
+.return-home {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 8px;
+  display: inline-flex;
+  align-items: center;
+}
 footer {
   border-top: 2px solid var(--ink);
   padding-top: 26px;

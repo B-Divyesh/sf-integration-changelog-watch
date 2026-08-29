@@ -129,10 +129,13 @@ test('@claim:api-contract covers the documented API methods, workspace boundary,
     const created = await fetch('/api/watches', { method: 'POST', headers, body: JSON.stringify(watch) }).then(async response => ({ status: response.status, body: await response.json() as { id: number } }))
     const watches = await fetch('/api/watches', { headers })
     const updated = await fetch(`/api/watches/${created.body.id}`, { method: 'PUT', headers, body: JSON.stringify({ ...watch, keywords: 'deprecation' }) })
-    const imported = await fetch('/api/watches/import', { method: 'POST', headers, body: JSON.stringify({ watches: [{ ...watch, vendor: 'Imported contract fixture' }] }) })
+    const imported = await fetch('/api/watches/import', { method: 'POST', headers, body: JSON.stringify({ watches: [{ ...watch, vendor: 'Imported contract fixture' }] }) }).then(async response => ({ status: response.status, body: await response.json() as Array<{ id: number }> }))
     const actions = await fetch('/api/actions', { headers })
     const missingAction = await fetch('/api/actions/999999', { method: 'POST', headers, body: JSON.stringify({ acknowledged: true }) })
-    const deleted = await fetch(`/api/watches/${created.body.id}`, { method: 'DELETE', headers })
+    // Import is documented to replace the watch set. Use the returned watch
+    // ID; a serial SQLite run may reuse the old ROWID, while concurrent
+    // workspace creation will not.
+    const deleted = await fetch(`/api/watches/${imported.body[0].id}`, { method: 'DELETE', headers })
     const scan = await fetch('/api/scan', { method: 'POST', headers })
     return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, imported: imported.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
   })

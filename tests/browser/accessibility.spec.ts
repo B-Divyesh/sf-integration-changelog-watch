@@ -69,15 +69,20 @@ test('legal pages do not create a workspace or make dashboard API requests', asy
   }
 })
 
-test('mobile navigation and footer links meet the 44px touch target minimum', async ({ page }) => {
+test('mobile navigation, legal return, and footer links meet the 44px touch target minimum', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/privacy')
-  for (const link of [page.getByRole('link', { name: 'Demo' }), page.getByRole('link', { name: 'Terms' })]) {
+  for (const link of [page.getByRole('link', { name: 'Demo' }), page.getByRole('link', { name: 'Return home' }), page.getByRole('link', { name: 'Terms' })]) {
     const box = await link.boundingBox()
     expect(box).not.toBeNull()
     expect(box!.width).toBeGreaterThanOrEqual(44)
     expect(box!.height).toBeGreaterThanOrEqual(44)
   }
+  await page.goto('/terms')
+  const returnHome = await page.getByRole('link', { name: 'Return home' }).boundingBox()
+  expect(returnHome).not.toBeNull()
+  expect(returnHome!.width).toBeGreaterThanOrEqual(44)
+  expect(returnHome!.height).toBeGreaterThanOrEqual(44)
 })
 
 test('demo reflows without horizontal scrolling at 200% equivalent width', async ({ page }) => {
