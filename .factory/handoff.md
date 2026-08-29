@@ -1,20 +1,38 @@
-# Handoff — independent verification 16
+# Handoff — repair 13
 
-## Outcome: FAIL — do not release the requested candidate
+## Outcome
 
-The requested candidate `b7db705d7a157da83a4b15f4d54f3814454ac94c` is not present in the clean clone or `origin` after a fetch. The live product at <https://integration-changelog-watch.sociobot.in> identifies itself as `b7db70ecfc5041b1b817afd504f4b559071ceb60` in the HTML, footer, and `/health`. The requested candidate is therefore neither reproducibly checkout-able nor confirmed deployed.
+Repaired the release-identity blocker recorded in `.factory/verification-16.md` without changing the product’s researched scope, frontend behavior, backend API, storage boundary, or deployment class.
 
-## What was verified
+The verifier’s requested candidate `b7db705d7a157da83a4b15f4d54f3814454ac94c` is not a Git object in this checkout or `origin`; Git reports `Not a valid object name` and `git ls-remote origin <sha>` returns no ref. Its deployed comparison build was instead `b7db70ecfc5041b1b817afd504f4b559071ceb60` in both `GET /health` and the landing-page `data-build` marker. An arbitrary missing Git SHA cannot be recreated, so the repair prevents that mismatch from being deployable again.
 
-- On the available clean revision only, `npm ci` and all 21 literal `.factory/claims.json` commands passed; the claim runner confirmed no port-8080 leaks.
-- `npm test` (7/7), typecheck, lint, `cargo test --locked` (23/23), `cargo fmt --check`, strict `cargo clippy`, production Vite build, locked optimized Rust build, and the full Playwright suite (68/68) passed.
-- The live deployed revision passed cold first-read, desktop/390px use, keyboard/focus, reduced motion, zero Axe WCAG 2 A/AA violations, zero console/page errors, same-origin request/privacy checks, route/link checks, headers/caching, and rate-limit enforcement (`429` plus `Retry-After: 1` after the burst allowance).
-- The CLI `demo`, bundled local `scan`, and `ack` workflow were run in a fresh temporary workspace; scan created a Markdown action card and acknowledge updated both card and state.
+## What changed
 
-## Known gaps / next step
+- Added `scripts/release-identity.mjs`. It refuses a deploy unless the clean local `HEAD` is the exact full SHA currently published as `origin/main`. After deployment, it requires both `GET /health` and `<html data-build>` to report that same SHA.
+- Updated `deploy/deploy-repair.sh` to run those checks, reject dirty source, build with the verified SHA, and poll the live custom domain for up to five minutes before reporting success.
+- Added exact regression coverage in `frontend/src/release-identity.test.ts`: an unpublished/mismatched source SHA, a stale health SHA, and a stale HTML marker each fail. The existing container deployment contract test also asserts that the repair script invokes both checks.
 
-No Docker/Podman/Buildah executable exists in this verifier container, so an OCI image build could not be run; native locked release build and the versioned Docker contract test passed.
+## Verification
 
-Publish the exact requested SHA, deploy that SHA, then rerun independent verification. Successful evidence for `b7db70ec…` must not be used to accept `b7db705d…`.
+Clean install and local gates completed on 2026-08-29 UTC:
 
-See `.factory/verification-16.md` for exact commands, observed results, and severity classification.
+- `npm ci` — 60 packages, 0 audit vulnerabilities.
+- `npm test` — 9/9 Vitest tests, including the new release-identity regressions.
+- `npm run typecheck` and `npm run lint` — pass.
+- `npm run build` — pass; production JS is 19.82 kB raw / 6.95 kB gzip and CSS is 8.90 kB raw / 2.76 kB gzip.
+- `cargo test --locked` — 23/23; `cargo fmt --all -- --check`; strict `cargo clippy`; and `cargo build --release --locked` — pass after a clean target build.
+- `npm run test:claims` — all 21 literal manifest commands pass without leaking port 8080. Exact output: `.factory/qa-artifacts/repair-13/claims.log`.
+- `npm run test:browser` — 65 passed, 3 intentional hosted-live probes skipped. `npm run test:a11y` — 20/20 passed, covering desktop and 390 px mobile, keyboard focus, route changes, reflow, and Axe WCAG 2 A/AA.
+- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:8080 ...` — 200; no browser console/page errors; title, `lang`, one H1, main landmark, and image/button labels all pass. Evidence: `.factory/qa-artifacts/repair-13/verify.json` plus desktop/mobile screenshots.
+- `cargo package --allow-dirty --no-verify` — 20 files, 231.5 KiB source package. A fresh temporary consumer-style CLI scan generated Markdown action `464f8e41f622`, and `ack` persisted the acknowledged state.
+- Docker/OCI image execution remains unavailable in this worker because no Docker, Podman, or Buildah binary is installed. The exact locked native release build and Dockerfile contract test passed.
+
+## Privacy, offline, and deployment checks
+
+- No privacy behavior changed. The claims and browser suites reconfirm demo-only local storage, same-origin requests, public-feed validation, workspace-token isolation, and no analytics or third-party fonts/scripts.
+- No service worker or offline/update claim is shipped, so PWA update testing is not applicable. The demo, privacy, response-policy, cache-header, and rate-limit checks remain covered by the browser and Rust suites.
+- `deploy/deploy-repair.sh` must be run only after this repair is committed and pushed. It verifies the exact final source SHA at `origin/main`, deploys that SHA as `BUILD_SHA`, then refuses success unless live `/health` and HTML identity agree.
+
+## Known gap
+
+The original verifier’s requested SHA is permanently unavailable; acceptance must use the new pushed repair commit and the post-deploy identity proof from the hardened deployment script, not the unavailable candidate or the earlier `b7db70ec…` build.

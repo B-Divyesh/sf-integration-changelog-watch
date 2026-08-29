@@ -16,6 +16,17 @@ base="https://management.azure.com$resource_id"
 environment_id="$resource_id/providers/Microsoft.App/managedEnvironments/$environment"
 identity_id="$resource_id/providers/Microsoft.ManagedIdentity/userAssignedIdentities/factory-worker-identity"
 certificate_id="$environment_id/managedCertificates/cert-integration-changelog-watch"
+site_url=${DEPLOY_SITE_URL:-https://integration-changelog-watch.sociobot.in}
+
+# A build SHA is only a useful release identity when it names the exact source
+# that reviewers can fetch. Refuse dirty or merely-local revisions before an
+# image is built, then check the public deployment after the revision rolls.
+if [ -n "$(git -C "$root" status --porcelain)" ]; then
+  echo "Refusing to deploy a dirty worktree. Commit and push the exact source first." >&2
+  exit 1
+fi
+remote_sha=$(git -C "$root" ls-remote origin refs/heads/main | awk 'NR == 1 { print $1 }')
+node "$root/scripts/release-identity.mjs" published "$sha" "$remote_sha"
 
 if [ -z "${PREBUILT_IMAGE:-}" ]; then
   az acr build --registry sociobotregistry --image "$tag" --file Dockerfile \
@@ -59,4 +70,21 @@ az rest --method put \
 EOF
 )" --output none
 
-echo "Deployed sociobotregistry.azurecr.io/$tag with Azure Files /data and one replica."
+deadline=$((SECONDS + 300))
+verified=0
+while [ "$SECONDS" -lt "$deadline" ]; do
+  health=$(curl --fail --silent --show-error --max-time 15 "$site_url/health" 2>/dev/null || true)
+  html=$(curl --fail --silent --show-error --max-time 15 "$site_url/" 2>/dev/null || true)
+  if printf '%s\n%s' "$health" "$html" | node "$root/scripts/release-identity.mjs" live "$sha" >/dev/null 2>&1; then
+    verified=1
+    break
+  fi
+  sleep 5
+done
+
+if [ "$verified" -ne 1 ]; then
+  printf '%s\n%s' "$health" "$html" | node "$root/scripts/release-identity.mjs" live "$sha"
+  exit 1
+fi
+
+echo "Deployed sociobotregistry.azurecr.io/$tag with Azure Files /data and one replica. Live identity: $sha"
