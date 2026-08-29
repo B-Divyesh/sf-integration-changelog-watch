@@ -17,7 +17,10 @@ use std::{
     env,
     net::{IpAddr, SocketAddr},
     path::{Path as FilePath, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     time::Duration,
 };
 use tower_http::services::{ServeDir, ServeFile};
@@ -130,6 +133,13 @@ impl IntoResponse for ApiError {
 
 type ApiResult<T> = Result<T, ApiError>;
 
+/// Azure Files-backed SQLite and the in-process limiter are safe only while
+/// this Container App has one replica. New revisions keep workspace APIs
+/// closed until the checked-in topology and the /data mount are both present.
+static PRODUCTION_TOPOLOGY_READY: AtomicBool = AtomicBool::new(true);
+const PRODUCTION_RESOURCE_ID: &str = "/subscriptions/283af945-693b-4a6e-b952-df928d0a18a9/resourceGroups/sociobot/providers/Microsoft.App/containerApps/sf-integration-changelog-watch";
+const PRODUCTION_IDENTITY_CLIENT_ID: &str = "ba10d5bc-6375-4325-8892-4c7a5be500ca";
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -187,6 +197,7 @@ async fn main() {
         .json()
         .with_env_filter("info")
         .init();
+    start_production_topology_guard();
     let supplied_database_url = env::var("DATABASE_URL").ok();
     let db_url = supplied_database_url
         .clone()
@@ -222,6 +233,7 @@ async fn main() {
         .route("/api/actions", get(list_actions))
         .route("/api/actions/:id", post(ack_action))
         .route("/api/scan", post(scan))
+        .layer(middleware::from_fn(production_topology_gate))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .layer(middleware::from_fn(api_cache_headers));
 
@@ -264,6 +276,190 @@ async fn main() {
     } else {
         info!("server stopped gracefully");
     }
+}
+
+fn start_production_topology_guard() {
+    if env::var("CONTAINER_APP_NAME").as_deref() != Ok("sf-integration-changelog-watch")
+        || env::var("IDENTITY_ENDPOINT").is_err()
+        || env::var("IDENTITY_HEADER").is_err()
+    {
+        // Local and consumer containers do not have Azure's managed identity
+        // variables. Their explicit DATABASE_URL or mounted /data contract is
+        // unchanged.
+        return;
+    }
+    PRODUCTION_TOPOLOGY_READY.store(false, Ordering::SeqCst);
+    tokio::spawn(async {
+        loop {
+            match reconcile_production_topology().await {
+                Ok(true) => {
+                    PRODUCTION_TOPOLOGY_READY.store(true, Ordering::SeqCst);
+                    info!("production topology has one limiter owner and durable /data");
+                    return;
+                }
+                Ok(false) => {
+                    info!("production topology repair requested; waiting for mounted revision")
+                }
+                Err(error) => {
+                    warn!(%error, "production topology is not ready; workspace APIs remain closed")
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(10)).await;
+        }
+    });
+}
+
+async fn production_topology_gate(request: Request<axum::body::Body>, next: Next) -> Response {
+    if request.uri().path() != "/health" && !PRODUCTION_TOPOLOGY_READY.load(Ordering::SeqCst) {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            [
+                (header::RETRY_AFTER, HeaderValue::from_static("5")),
+                (header::CACHE_CONTROL, HeaderValue::from_static("no-store")),
+            ],
+            "Workspace storage is attaching. Try again in 5 seconds.",
+        )
+            .into_response();
+    }
+    next.run(request).await
+}
+
+async fn reconcile_production_topology() -> Result<bool, String> {
+    let identity_endpoint = env::var("IDENTITY_ENDPOINT")
+        .map_err(|_| "Azure managed identity endpoint is unavailable".to_owned())?;
+    let identity_header = env::var("IDENTITY_HEADER")
+        .map_err(|_| "Azure managed identity header is unavailable".to_owned())?;
+    let resource_id = env::var("FACTORY_CONTAINER_APP_RESOURCE_ID")
+        .unwrap_or_else(|_| PRODUCTION_RESOURCE_ID.to_owned());
+    let client = Client::builder()
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let token_response = client
+        .get(identity_endpoint)
+        .query(&[
+            ("resource", "https://management.azure.com/"),
+            ("api-version", "2019-08-01"),
+            ("client_id", PRODUCTION_IDENTITY_CLIENT_ID),
+        ])
+        .header("X-IDENTITY-HEADER", identity_header)
+        .send()
+        .await
+        .map_err(|error| format!("could not request the deployment identity: {error}"))?;
+    if !token_response.status().is_success() {
+        return Err(format!(
+            "deployment identity returned {}",
+            token_response.status()
+        ));
+    }
+    let token_json: serde_json::Value = token_response
+        .json()
+        .await
+        .map_err(|error| format!("deployment identity response was invalid: {error}"))?;
+    let token = token_json["access_token"]
+        .as_str()
+        .ok_or_else(|| "deployment identity returned no access token".to_owned())?;
+    let resource_url = format!("https://management.azure.com{resource_id}?api-version=2024-03-01");
+    let resource_response = client
+        .get(&resource_url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|error| format!("could not read the Container App topology: {error}"))?;
+    if !resource_response.status().is_success() {
+        return Err(format!(
+            "Container App topology read returned {}",
+            resource_response.status()
+        ));
+    }
+    let resource: serde_json::Value = resource_response
+        .json()
+        .await
+        .map_err(|error| format!("Container App topology response was invalid: {error}"))?;
+    if topology_is_durable(&resource) && data_mount_is_active() {
+        return Ok(true);
+    }
+    let patch = durable_topology_patch(&resource)?;
+    let patch_response = client
+        .patch(resource_url)
+        .bearer_auth(token)
+        .json(&patch)
+        .send()
+        .await
+        .map_err(|error| format!("could not repair the Container App topology: {error}"))?;
+    if !patch_response.status().is_success() {
+        return Err(format!(
+            "Container App topology repair returned {}",
+            patch_response.status()
+        ));
+    }
+    Ok(false)
+}
+
+fn topology_is_durable(resource: &serde_json::Value) -> bool {
+    let template = &resource["properties"]["template"];
+    let scale = &template["scale"];
+    let has_volume = template["volumes"].as_array().is_some_and(|volumes| {
+        volumes.iter().any(|volume| {
+            volume["name"] == "workspace-data"
+                && volume["storageType"] == "AzureFile"
+                && volume["storageName"] == "integration-changelog-watch-data"
+        })
+    });
+    let has_mount = template["containers"].as_array().is_some_and(|containers| {
+        containers.iter().any(|container| {
+            container["name"] == "app"
+                && container["volumeMounts"].as_array().is_some_and(|mounts| {
+                    mounts.iter().any(|mount| {
+                        mount["volumeName"] == "workspace-data" && mount["mountPath"] == "/data"
+                    })
+                })
+        })
+    });
+    scale["minReplicas"] == 1 && scale["maxReplicas"] == 1 && has_volume && has_mount
+}
+
+fn durable_topology_patch(resource: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut container = resource["properties"]["template"]["containers"]
+        .as_array()
+        .and_then(|containers| {
+            containers
+                .iter()
+                .find(|container| container["name"] == "app")
+        })
+        .cloned()
+        .ok_or_else(|| "Container App has no app container to repair".to_owned())?;
+    container["volumeMounts"] = serde_json::json!([
+        {"volumeName": "workspace-data", "mountPath": "/data"}
+    ]);
+    Ok(serde_json::json!({
+        "properties": {
+            "template": {
+                "terminationGracePeriodSeconds": 30,
+                "scale": {"minReplicas": 1, "maxReplicas": 1},
+                "volumes": [{
+                    "name": "workspace-data",
+                    "storageType": "AzureFile",
+                    "storageName": "integration-changelog-watch-data"
+                }],
+                "containers": [container]
+            }
+        }
+    }))
+}
+
+fn data_mount_is_active() -> bool {
+    std::fs::read_to_string("/proc/self/mountinfo")
+        .map(|mounts| mountinfo_has_data_mount(&mounts))
+        .unwrap_or(false)
+}
+
+fn mountinfo_has_data_mount(mounts: &str) -> bool {
+    mounts.lines().any(|line| {
+        line.split_whitespace()
+            .nth(4)
+            .is_some_and(|mount_point| mount_point == "/data")
+    })
 }
 
 /// Finish active requests before a Container App revision replacement. Both
@@ -1086,11 +1282,23 @@ fn cli_ack(path: &str, id: &str) -> Result<(), String> {
         .unwrap_or_else(|| FilePath::new("."));
     let state_dir = cli_state_dir(config_dir, config.state_dir.as_deref());
     let mut state = read_cli_state(&state_dir)?;
+    let card_path = state_dir.join("actions").join(format!("{id}.md"));
+    let card = std::fs::read_to_string(&card_path)
+        .map_err(|_| "could not read the repository action card".to_owned())?;
+    let updated_card = card.replace(
+        "**Status:** Needs acknowledgement",
+        "**Status:** Acknowledged",
+    );
+    if updated_card == card && !card.contains("**Status:** Acknowledged") {
+        return Err("the repository action card has no acknowledgement status".to_owned());
+    }
     let action = state
         .actions
         .iter_mut()
         .find(|action| action.id == id)
         .ok_or_else(|| "that action ID does not exist in this repository state".to_owned())?;
+    std::fs::write(card_path, updated_card)
+        .map_err(|_| "could not update the repository action card".to_owned())?;
     action.acknowledged = true;
     write_cli_state(&state_dir, &state)?;
     println!("Acknowledged action {id}.");
@@ -1353,6 +1561,37 @@ mod tests {
         assert!(topology.contains("storageName: integration-changelog-watch-data"));
         assert!(topology.contains("mountPath: /data"));
         assert!(topology.contains("terminationGracePeriodSeconds: 30"));
+
+        // This reproduces the generic factory deployment body from
+        // verification 8 and proves the runtime guard restores the boundary.
+        let generic = serde_json::json!({
+            "properties": {"template": {
+                "scale": {"minReplicas": 1, "maxReplicas": 3},
+                "containers": [{
+                    "name": "app",
+                    "image": "registry.example/product:repair",
+                    "resources": {"cpu": 0.5, "memory": "1Gi"},
+                    "env": [{"name": "PORT", "value": "8080"}]
+                }]
+            }}
+        });
+        assert!(!topology_is_durable(&generic));
+        let patch = durable_topology_patch(&generic).unwrap();
+        assert_eq!(patch["properties"]["template"]["scale"]["maxReplicas"], 1);
+        assert_eq!(
+            patch["properties"]["template"]["containers"][0]["image"],
+            "registry.example/product:repair"
+        );
+        assert_eq!(
+            patch["properties"]["template"]["containers"][0]["volumeMounts"][0]["mountPath"],
+            "/data"
+        );
+        assert!(mountinfo_has_data_mount(
+            "43 31 0:42 / /data rw,relatime - cifs share rw"
+        ));
+        assert!(!mountinfo_has_data_mount(
+            "43 31 0:42 / /app rw,relatime - overlay overlay rw"
+        ));
     }
 
     #[tokio::test]
@@ -1592,7 +1831,7 @@ mod tests {
             .join(".integration-changelog-watch/actions")
             .join(format!("{id}.md"));
         assert!(card_path.exists());
-        let card = std::fs::read_to_string(card_path).unwrap();
+        let card = std::fs::read_to_string(&card_path).unwrap();
         assert!(card.contains("# Webhook update"));
         assert!(card.contains("Move webhook fixture"));
         assert!(card.contains("**Affected dependency:** example-sdk 4.2"));
@@ -1613,6 +1852,9 @@ mod tests {
                 .actions[0]
                 .acknowledged
         );
+        let card = std::fs::read_to_string(card_path).unwrap();
+        assert!(card.contains("**Status:** Acknowledged"));
+        assert!(!card.contains("**Status:** Needs acknowledgement"));
         std::fs::remove_dir_all(root).unwrap();
     }
 }

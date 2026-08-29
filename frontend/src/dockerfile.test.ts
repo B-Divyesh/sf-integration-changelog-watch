@@ -19,5 +19,13 @@ describe('container build contract', () => {
     expect(deploy).toContain('"storageType":"AzureFile"')
     expect(deploy).toContain('"mountPath":"/data"')
     expect(deploy).toContain('terminationGracePeriodSeconds')
+    expect(readFileSync(new URL('../../src/main.rs', import.meta.url), 'utf8')).toContain('reconcile_production_topology')
+  })
+
+  it('ships the required square 180px touch icon', () => {
+    const png = readFileSync(new URL('../public/apple-touch-icon.png', import.meta.url))
+    expect(png.subarray(1, 4).toString()).toBe('PNG')
+    expect(png.readUInt32BE(16)).toBe(180)
+    expect(png.readUInt32BE(20)).toBe(180)
   })
 })

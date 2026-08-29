@@ -131,10 +131,14 @@ test('@claim:cli-repository-workflow stores hashes, action cards, and acknowledg
     await execFileAsync('cargo', ['run', '--quiet', '--', 'scan', '--config', config], { cwd: process.cwd() })
     const state = JSON.parse(await readFile(join(directory, '.integration-changelog-watch/state.json'), 'utf8')) as { actions: Array<{ id: string, acknowledged: boolean }> }
     expect(state.actions).toHaveLength(1)
-    await expect(readFile(join(directory, `.integration-changelog-watch/actions/${state.actions[0].id}.md`), 'utf8')).resolves.toContain('Webhook update')
+    const cardPath = join(directory, `.integration-changelog-watch/actions/${state.actions[0].id}.md`)
+    await expect(readFile(cardPath, 'utf8')).resolves.toContain('Webhook update')
     await execFileAsync('cargo', ['run', '--quiet', '--', 'ack', '--config', config, '--id', state.actions[0].id], { cwd: process.cwd() })
     const acknowledged = JSON.parse(await readFile(join(directory, '.integration-changelog-watch/state.json'), 'utf8')) as { actions: Array<{ acknowledged: boolean }> }
     expect(acknowledged.actions[0].acknowledged).toBe(true)
+    const acknowledgedCard = await readFile(cardPath, 'utf8')
+    expect(acknowledgedCard).toContain('**Status:** Acknowledged')
+    expect(acknowledgedCard).not.toContain('**Status:** Needs acknowledgement')
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

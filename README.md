@@ -32,15 +32,15 @@ cargo run -- scan --config examples/watches.json
 cargo run -- ack --config examples/watches.json --id <action-id>
 ```
 
-`demo` prints the bundled Markdown action-card sample. `scan --config` reads a repository-owned JSON watch mapping, writes new Markdown action cards under `.integration-changelog-watch/actions/`, and stores hashes plus acknowledgement state in `.integration-changelog-watch/state.json`. Each card prints its hash-derived action ID; pass that ID to `ack`. The shipped example uses the bundled `examples/sample-feed.xml`, so it works without a network request.
+`demo` prints the bundled Markdown action-card sample. `scan --config` reads a repository-owned JSON watch mapping, writes new Markdown action cards under `.integration-changelog-watch/actions/`, and stores hashes plus acknowledgement state in `.integration-changelog-watch/state.json`. Each card prints its hash-derived action ID; pass that ID to `ack`. Acknowledgement updates both the state file and the Markdown card. The shipped example uses the bundled `examples/sample-feed.xml`, so it works without a network request.
 
 ## Hosted scope
 
-The hosted dashboard is deliberately a free, private, three-watch workspace. It has no account system, shared team workspaces, unlimited-watch tier, or paid plan. This is an explicit scope decision: a browser-held workspace token is not a safe team identity or billing entitlement. Teams that need repository-owned mappings with more feeds can use the local CLI today; hosted team collaboration is not offered or implied.
+The hosted dashboard is deliberately a free, private, three-watch workspace. It has no account system, shared team workspaces, unlimited-watch tier, or paid plan. A browser-held workspace token is not a team identity or billing entitlement. Teams can keep larger mappings and action cards in their repository with the local CLI. Hosted team collaboration is not offered or implied.
 
 ## Deploy
 
-Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`). The shipped Container App configuration uses one replica and mounts durable Azure Files at `/data`, where SQLite persists at `/data/changelog-watch.db`. SQLite uses Azure Files-compatible dot-file locks, so do not raise the replica count.
+Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The container uses the current stable Rust image and builds with `cargo build --release --locked`. It starts with only `PORT` required (default `8080`). The shipped Container App configuration uses one replica and mounts durable Azure Files at `/data`, where SQLite persists at `/data/changelog-watch.db`. A production topology guard closes workspace APIs and restores that configuration if a generic deploy removes it. SQLite uses Azure Files-compatible dot-file locks, so do not raise the replica count.
 
 See `/privacy` and `/terms` for data handling and source rules.
 

@@ -43,10 +43,10 @@
   },
   {
     "id": "cli-repository-workflow",
-    "claim": "The CLI stores deduplicated Markdown action cards and acknowledgement state beside a repository mapping.",
+    "claim": "The CLI stores deduplicated Markdown action cards and updates both the card and state when acknowledged.",
     "where": "README CLI section",
     "test": "npm run build && npm run test:browser -- --grep @claim:cli-repository-workflow",
-    "sandbox": "temporary repository mapping with a local shipped-format feed; scan twice, inspect state and card, then acknowledge it"
+    "sandbox": "temporary repository mapping with a local shipped-format feed; scan twice, acknowledge it, then inspect both state and the rendered card status"
   },
   {
     "id": "cli-demo-local",
@@ -85,9 +85,9 @@
   },
   {
     "id": "single-replica-durable-data",
-    "claim": "The shipped Container App configuration keeps workspace state and rate limits in one durable replica.",
+    "claim": "The shipped Container App configuration and runtime guard keep workspace state and rate limits in one durable replica.",
     "where": "README deployment section",
     "test": "cargo test --locked claim_single_replica_durable_topology",
-    "sandbox": "inspect the versioned deployment template for a one-replica scale bound and Azure Files /data mount"
+    "sandbox": "inspect the versioned template, reproduce the generic three-replica/no-mount body, and assert the guard restores one replica plus the Azure Files /data mount while preserving the image"
   }
 ]
