@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
-test('demo has no serious accessibility violations', async ({ page }) => {
+test('demo has no accessibility violations', async ({ page }) => {
   const consoleErrors: string[] = []
   page.on('console', message => {
     if (message.type() === 'error') consoleErrors.push(message.text())
@@ -12,8 +12,27 @@ test('demo has no serious accessibility violations', async ({ page }) => {
   await expect(page.locator('main')).toHaveCount(1)
   await expect(page.locator('img:not([alt])')).toHaveCount(0)
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
-  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([])
+  expect(results.violations).toEqual([])
   expect(consoleErrors).toEqual([])
+})
+
+test('every app route supplies route-specific titles, descriptions, previews, and canonicals', async ({ page }) => {
+  const expected = [
+    ['/', 'Integration Changelog Watch — Assign vendor changes', 'Turn vendor release notes into assigned action cards with an owner, version, and local check.', '/'],
+    ['/demo', 'Demo — Integration Changelog Watch', 'Explore sample vendor notices and assigned action cards. Demo changes stay separate from your private workspace.', '/demo'],
+    ['/privacy', 'Privacy — Integration Changelog Watch', 'Read how Integration Changelog Watch separates demo data, workspace records, and third-party requests.', '/privacy'],
+    ['/terms', 'Terms — Integration Changelog Watch', 'Read the public-source and responsible-use terms for Integration Changelog Watch.', '/terms'],
+  ] as const
+  for (const [path, title, description, canonical] of expected) {
+    await page.goto(path)
+    await expect(page).toHaveTitle(title)
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', description)
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', title)
+    await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', description)
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', title)
+    await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', description)
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://integration-changelog-watch.sociobot.in${canonical}`)
+  }
 })
 
 test('privacy deep link has its own heading and title', async ({ page }) => {
@@ -59,6 +78,8 @@ test('missing routes return the product-styled 404 screen', async ({ page }) => 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('That page is not here')
   await expect(page.getByRole('link', { name: 'Return home' })).toBeVisible()
   await expect(page.locator('link[href="/404.css"]')).toHaveCount(1)
+  await expect(page.getByRole('link', { name: 'How it works' })).toBeVisible()
+  for (const selector of ['meta[property="og:title"]', 'meta[property="og:description"]', 'meta[name="twitter:card"]', 'meta[name="twitter:title"]', 'meta[name="twitter:description"]', 'link[rel="apple-touch-icon"]']) await expect(page.locator(selector)).toHaveCount(1)
 })
 
 test('SPA and 404 footers use the same runtime build identity as health', async ({ page }) => {

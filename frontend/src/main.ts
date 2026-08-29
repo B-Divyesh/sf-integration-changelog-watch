@@ -13,6 +13,7 @@ let actions: Action[] = []
 let active = 'home'
 let statusMessage = ''
 let workspacePromise: Promise<string> | undefined
+let importPreview: Watch[] | undefined
 const storageKey = () => (demo ? demoKey : realKey)
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!))
 
@@ -83,13 +84,19 @@ function actionCard(action: Action) {
   return `<article class="action ${action.acknowledged ? 'done' : ''}" data-action="${action.id}"><div class="action-top"><p class="eyebrow">Matched “${escape(action.matched)}” · ${escape(action.seenAt)}</p><span class="status">${action.acknowledged ? 'Acknowledged' : 'Needs acknowledgement'}</span></div><h3>${escape(action.title)}</h3><p>${escape(action.excerpt)}</p><dl><div><dt>Owner</dt><dd>${escape(action.owner)}</dd></div><div><dt>Affected dependency</dt><dd>${escape(dependency)}</dd></div><div><dt>Check</dt><dd><code>${escape(action.command)}</code></dd></div></dl><div class="card-actions"><a href="${escape(action.url)}" target="_blank" rel="noreferrer">Open vendor notice <span class="sr-only">(opens in a new tab)</span></a>${action.acknowledged ? '' : `<button class="secondary ack" data-id="${action.id}">Acknowledge action</button>`}</div></article>`
 }
 
-function dashboard() {
+function dashboard(isDemoBoard = false) {
   const pending = actions.filter(action => !action.acknowledged)
-  return `<section class="dashboard" aria-labelledby="action-heading"><div class="dash-head"><div><p class="eyebrow">Your owned queue</p><h2 id="action-heading">${pending.length ? `${pending.length} action${pending.length === 1 ? ' needs' : 's need'} acknowledgement` : 'No actions need acknowledgement'}</h2></div><div class="dash-buttons"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div></div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p><div class="dash-grid"><section><h3>Action cards</h3><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Add a feed, rule, owner, dependency version, and check command. Matched release notes will appear here.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section><aside class="watches" aria-label="Watched feeds"><div class="side-title"><h3>Watched feeds</h3><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>Affected dependency: ${escape(watch.version.trim() || 'Not recorded')}</small><small>${escape(watch.keywords)}</small><span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></aside></div></section>`
+  const heading = pending.length ? `${pending.length} action${pending.length === 1 ? ' needs' : 's need'} acknowledgement` : 'No actions need acknowledgement'
+  const headingMarkup = isDemoBoard ? `<h1 id="action-heading" tabindex="-1">Sample action cards</h1><p class="demo-summary">${heading}. These are safe sample records.</p>` : `<p class="eyebrow">Assigned action cards</p><h2 id="action-heading">${heading}</h2>`
+  const preview = importPreview ? `<section class="import-preview" aria-labelledby="import-heading"><h3 id="import-heading">Review ${importPreview.length} imported watch${importPreview.length === 1 ? '' : 'es'}</h3><p>These replace the current watches and their action cards.</p><ul>${importPreview.map(watch => `<li><strong>${escape(watch.vendor)}</strong> — ${escape(watch.keywords)} → ${escape(watch.owner)}</li>`).join('')}</ul><button id="confirm-import" class="primary">Import ${importPreview.length} watch${importPreview.length === 1 ? '' : 'es'}</button><button id="cancel-import" class="text-button">Cancel import</button></section>` : ''
+  const actionSection = `<section class="action-column" aria-labelledby="cards-heading"><h3 id="cards-heading">Action cards</h3><div class="action-list">${actions.length ? actions.map(actionCard).join('') : `<div class="empty"><h3>No action cards yet</h3><p>Matched release notes appear here after you scan a feed.</p><button class="primary" id="empty-add">Add your first watch</button></div>`}</div></section>`
+  const watchesPanel = `<section class="watches" aria-labelledby="watches-heading"><div class="side-title"><h3 id="watches-heading">Watched feeds</h3><span>${watches.length}/3</span></div>${watches.length ? watches.map(watch => `<article class="watch"><strong>${escape(watch.vendor)}</strong><span>${escape(watch.owner)}</span><small>Affected dependency: ${escape(watch.version.trim() || 'Not recorded')}</small><small>Keywords: ${escape(watch.keywords)}</small><span class="watch-controls"><button class="text-button edit-watch" data-watch="${watch.id}">Edit ${escape(watch.vendor)}</button><button class="text-button delete-watch" data-watch="${watch.id}">Remove ${escape(watch.vendor)}</button></span></article>`).join('') : '<p>Nothing is watched yet.</p>'}<div class="watch-file-actions"><button id="export-watches" class="text-button" ${watches.length ? '' : 'disabled'}>Export watch file</button><button id="import-watches" class="text-button">Import watch file</button><input id="watch-file" type="file" accept="application/json,.json" hidden></div><button id="export" class="text-button" ${actions.length ? '' : 'disabled'}>Export action cards as CSV</button></section>`
+  if (isDemoBoard) return `<section class="dashboard demo-dashboard" aria-labelledby="action-heading"><div class="demo-head">${headingMarkup}</div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p>${preview}${actionSection}<div class="dash-buttons demo-controls"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div>${watchesPanel}</section>`
+  return `<section class="dashboard" aria-labelledby="action-heading"><div class="dash-head"><div>${headingMarkup}</div><div class="dash-buttons"><button id="scan" class="primary" ${watches.length ? '' : 'disabled'}>Scan watched feeds</button><button id="add-watch" class="secondary">Add a watch</button></div></div><p id="notice" class="notice" role="status" aria-live="polite">${escape(statusMessage)}</p>${preview}<div class="dash-grid">${actionSection}${watchesPanel}</div></section>`
 }
 
 function home() {
-  return `<section class="hero"><div class="hero-copy"><p class="kicker">INTEGRATION CHANGELOG WATCH</p><h1 tabindex="-1">Turn vendor changes into owned actions</h1><p class="lede">For engineers who maintain payment, auth, analytics, or messaging integrations.</p><div class="hero-actions"><button class="primary" id="try-demo">Try it with sample data</button><span>See matched notices, owners, versions, and checks.</span></div><ul class="facts"><li>Rules are written by your team.</li><li>Scans run only when you request them.</li><li>Your workspace is separated from other visitors.</li></ul></div><figure><img src="/paper-cut-hero.webp" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Paper release-note cards travel into a small action card."><figcaption>Original paper-cut illustration.</figcaption></figure></section>${dashboard()}<section class="how" id="how"><p class="eyebrow">How it works</p><h2>Give each vendor change a next step</h2><ol><li><strong>Watch a public feed.</strong><span>Paste a changelog or RSS address you are allowed to read.</span></li><li><strong>Match your words.</strong><span>Use rules like “webhook”, “deprecation”, or an API version.</span></li><li><strong>Run the right check.</strong><span>Each matching notice includes an owner, dependency version, and check command.</span></li></ol></section><section class="limits"><h2>Hosted workspace scope</h2><p>The hosted dashboard is a free private workspace for three feeds.</p><p>It does not provide shared team workspaces, accounts, unlimited watches, or a paid plan.</p><p>Use the local CLI for repository-owned mappings with more feeds.</p><h2>What this does not do</h2><p>It does not scan automatically.</p><p>Private, loopback, and link-local addresses are blocked.</p></section>`
+  return `<section class="hero"><div class="hero-copy"><h1 tabindex="-1">Turn vendor changes into assigned action cards</h1><p class="lede">For engineers who maintain payment, auth, analytics, or messaging integrations.</p><div class="hero-actions"><button class="primary" id="try-demo">Try it with sample data</button><span>See matched notices, owners, versions, and checks.</span></div><ul class="facts"><li>You choose the matching keywords.</li><li>Scans run only when you request them.</li><li>Your workspace is separated from other visitors.</li></ul></div><figure><img src="/paper-cut-hero.webp" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Paper release-note cards move into an assigned action card."></figure></section>${dashboard()}<section class="how" id="how"><p class="eyebrow">How it works</p><h2>Give each vendor change a next step</h2><ol><li><strong>Watch a public feed.</strong><span>Paste a changelog or RSS address you are allowed to read.</span></li><li><strong>Choose your keywords.</strong><span>Use keywords like “webhook”, “deprecation”, or an API version.</span></li><li><strong>Run the right check.</strong><span>Each matching notice includes an owner, dependency version, and check command.</span></li></ol></section><section class="limits"><h2>Hosted workspace scope</h2><p>The hosted workspace holds up to three watches.</p><p>Use the local CLI when you need four or more watch mappings.</p><h2>What this does not do</h2><p>It does not scan automatically.</p><p>Private, loopback, and link-local addresses are blocked.</p></section>`
 }
 
 function legal(kind: 'privacy' | 'terms') {
@@ -98,17 +105,33 @@ function legal(kind: 'privacy' | 'terms') {
   return `<article class="legal"><h1 tabindex="-1">${privacy ? 'Privacy for Integration Changelog Watch' : 'Terms for Integration Changelog Watch'}</h1><p>${privacy ? 'Demo data stays in separate browser storage. Real workspaces use a random browser-held token and are not visible to other workspace tokens.' : 'Use only public changelog and RSS addresses that you are allowed to read. You are responsible for your matching rules and follow-up work.'}</p><h2>${privacy ? 'Data handling' : 'Public sources'}</h2><p>${privacy ? 'No analytics, advertising scripts, or third-party fonts run here. The server stores watches and action cards only inside the workspace token you create.' : 'Private, loopback, link-local, and redirecting source addresses are blocked to protect the service.'}</p><p><a href="/">Return home</a></p></article>`
 }
 
+function setMetadata() {
+  const route = active === 'privacy' ? 'privacy' : active === 'terms' ? 'terms' : demo ? 'demo' : 'home'
+  const metadata = {
+    home: { title: 'Integration Changelog Watch — Assign vendor changes', description: 'Turn vendor release notes into assigned action cards with an owner, version, and local check.', canonical: '/' },
+    demo: { title: 'Demo — Integration Changelog Watch', description: 'Explore sample vendor notices and assigned action cards. Demo changes stay separate from your private workspace.', canonical: '/demo' },
+    privacy: { title: 'Privacy — Integration Changelog Watch', description: 'Read how Integration Changelog Watch separates demo data, workspace records, and third-party requests.', canonical: '/privacy' },
+    terms: { title: 'Terms — Integration Changelog Watch', description: 'Read the public-source and responsible-use terms for Integration Changelog Watch.', canonical: '/terms' },
+  }[route]
+  document.title = metadata.title
+  document.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href = `https://integration-changelog-watch.sociobot.in${metadata.canonical}`
+  document.querySelector<HTMLMetaElement>('meta[name="description"]')!.content = metadata.description
+  for (const [property, content] of [['og:title', metadata.title], ['og:description', metadata.description], ['twitter:title', metadata.title], ['twitter:description', metadata.description]]) {
+    document.querySelector<HTMLMetaElement>(`meta[property="${property}"], meta[name="${property}"]`)!.content = content
+  }
+}
+
 function render() {
-  document.title = active === 'privacy' ? 'Privacy — Integration Changelog Watch' : active === 'terms' ? 'Terms — Integration Changelog Watch' : demo ? 'Demo — Integration Changelog Watch' : 'Integration Changelog Watch — Track vendor changes'
-  document.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href = `https://integration-changelog-watch.sociobot.in${location.pathname}`
+  setMetadata()
   const pageName = active === 'privacy' ? 'Privacy' : active === 'terms' ? 'Terms' : demo ? 'Demo' : 'Integration Changelog Watch'
-  app.innerHTML = `<a class="skip" href="#main">Skip to content</a><header><a class="wordmark" href="/" data-route="home"><span aria-hidden="true">▰</span> Changelog Watch</a><nav aria-label="Main navigation"><a href="/demo" data-route="demo">Demo</a><a href="/#how">How it works</a><a href="/privacy" data-route="privacy">Privacy</a></nav></header>${demo ? `<aside class="demo-banner">Demo — sample data, nothing is saved <span><button id="reset-demo">Reset demo</button><button id="start-real">Start for real</button></span></aside>` : ''}<main id="main" tabindex="-1">${active === 'privacy' || active === 'terms' ? legal(active) : home()}</main><p class="sr-only" aria-live="polite" aria-atomic="true">${pageName}</p><footer><p>Vendor notices become owned integration actions.</p><p><a href="/privacy" data-route="privacy">Privacy</a> · <a href="/terms" data-route="terms">Terms</a> · Built by Param Factory · build ${escape(buildIdentity)}</p></footer>`
+  app.innerHTML = `<a class="skip" href="#main">Skip to content</a><header><a class="wordmark" href="/" data-route="home"><span aria-hidden="true">▰</span> Changelog Watch</a><nav aria-label="Main navigation"><a href="/demo" data-route="demo">Demo</a><a href="/#how">How it works</a><a href="/privacy" data-route="privacy">Privacy</a></nav></header>${demo ? `<aside class="demo-banner" aria-label="Demo controls">Demo — sample data, nothing is saved <span><button id="reset-demo">Reset demo</button><button id="start-real">Start a private workspace</button><small>Discards this demo.</small></span></aside>` : ''}<main id="main" tabindex="-1">${active === 'privacy' || active === 'terms' ? legal(active) : demo ? dashboard(true) : home()}</main><p class="sr-only" aria-live="polite" aria-atomic="true">${pageName}</p><footer><p>Vendor notices become assigned action cards.</p><p><a href="/privacy" data-route="privacy">Privacy</a> · <a href="/terms" data-route="terms">Terms</a> · Built by Param Factory · build ${escape(buildIdentity)}</p></footer>`
   bind()
 }
 
 function route(path: string, moveFocus = false) {
   active = path.includes('privacy') ? 'privacy' : path.includes('terms') ? 'terms' : 'home'
   demo = path === '/demo' || new URLSearchParams(location.search).get('demo') === '1'
+  importPreview = undefined
   load()
   render()
   // Legal pages are informational routes. They must not create a workspace or
@@ -184,6 +207,67 @@ function csv() {
   URL.revokeObjectURL(anchor.href)
 }
 
+function download(name: string, contents: string, type: string) {
+  const anchor = document.createElement('a')
+  anchor.href = URL.createObjectURL(new Blob([contents], { type }))
+  anchor.download = name
+  anchor.click()
+  URL.revokeObjectURL(anchor.href)
+}
+
+function watchFile() {
+  return JSON.stringify({ watches: watches.map(({ vendor, url, keywords, owner, version, command }) => ({ vendor, url, keywords, owner, version, command })) }, null, 2)
+}
+
+function validateWatchFile(value: unknown): Watch[] {
+  if (!value || typeof value !== 'object' || !Array.isArray((value as { watches?: unknown }).watches)) throw new Error('Choose a JSON file with a watches array.')
+  const imported = (value as { watches: unknown[] }).watches
+  if (!imported.length || imported.length > 3) throw new Error('Import one to three watches into the hosted workspace.')
+  return imported.map((item, index) => {
+    if (!item || typeof item !== 'object') throw new Error(`Watch ${index + 1} is not an object.`)
+    const record = item as Record<string, unknown>
+    const fields = ['vendor', 'url', 'keywords', 'owner', 'version', 'command'] as const
+    if (fields.some(field => typeof record[field] !== 'string') || !String(record.vendor).trim() || !String(record.url).trim() || !String(record.keywords).trim() || !String(record.owner).trim() || !String(record.command).trim()) throw new Error(`Watch ${index + 1} needs vendor, public URL, keywords, owner, version, and check command.`)
+    try {
+      const url = new URL(String(record.url))
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error()
+    } catch {
+      throw new Error(`Watch ${index + 1} needs a complete public http or https URL.`)
+    }
+    return { id: crypto.randomUUID(), vendor: String(record.vendor), url: String(record.url), keywords: String(record.keywords), owner: String(record.owner), version: String(record.version), command: String(record.command) }
+  })
+}
+
+async function importWatches() {
+  if (!importPreview) return
+  const incoming = importPreview
+  if (demo) {
+    watches = incoming
+    actions = []
+    statusMessage = `Imported ${incoming.length} sample watch${incoming.length === 1 ? '' : 'es'}. Scan when you are ready.`
+    importPreview = undefined
+    save()
+    render()
+    return
+  }
+  try {
+    for (const watch of watches) {
+      const response = await api(`/api/watches/${watch.id}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error(await response.text())
+    }
+    for (const watch of incoming) {
+      const response = await api('/api/watches', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(watch) })
+      if (!response.ok) throw new Error(await response.text())
+    }
+    importPreview = undefined
+    statusMessage = `Imported ${incoming.length} watch${incoming.length === 1 ? '' : 'es'}. Scan when you are ready.`
+    await hydrateReal()
+  } catch (error) {
+    statusMessage = `The watch file was not imported. ${error instanceof Error ? error.message : 'Try another file.'}`
+    render()
+  }
+}
+
 function bind() {
   document.querySelectorAll<HTMLElement>('[data-route]').forEach(link => link.addEventListener('click', event => {
     event.preventDefault()
@@ -201,6 +285,23 @@ function bind() {
   }))
   document.querySelector('#reset-demo')?.addEventListener('click', () => { localStorage.removeItem(demoKey); load(); render() })
   document.querySelector('#start-real')?.addEventListener('click', () => { localStorage.removeItem(demoKey); navigate('/') })
+  document.querySelector('#export-watches')?.addEventListener('click', () => download('integration-changelog-watches.json', watchFile(), 'application/json'))
+  document.querySelector('#import-watches')?.addEventListener('click', () => document.querySelector<HTMLInputElement>('#watch-file')?.click())
+  document.querySelector<HTMLInputElement>('#watch-file')?.addEventListener('change', async event => {
+    const input = event.currentTarget as HTMLInputElement
+    const file = (input.files || [])[0]
+    if (!file) return
+    try {
+      importPreview = validateWatchFile(JSON.parse(await file.text()))
+      statusMessage = ''
+    } catch (error) {
+      importPreview = undefined
+      statusMessage = `The watch file cannot be imported. ${error instanceof Error ? error.message : 'Choose another JSON file.'}`
+    }
+    render()
+  })
+  document.querySelector('#confirm-import')?.addEventListener('click', () => void importWatches())
+  document.querySelector('#cancel-import')?.addEventListener('click', () => { importPreview = undefined; statusMessage = 'Watch file import cancelled.'; render() })
   document.querySelectorAll<HTMLButtonElement>('.ack').forEach(button => button.addEventListener('click', async () => {
     const action = actions.find(item => String(item.id) === button.dataset.id)
     if (!action) return

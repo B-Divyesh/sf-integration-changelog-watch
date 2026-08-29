@@ -1,25 +1,38 @@
 # Copy audit
 
-Landing sentences (word counts):
+All visitor-facing landing sentences are below 22 words. No banned marketing terms appear.
 
-- “Turn vendor changes into owned actions” — 6
-- “For engineers who maintain payment, auth, analytics, or messaging integrations.” — 9
-- “See matched notices, owners, versions, and checks.” — 7
-- “Rules are written by your team.” — 6
-- “Scans run only when you request them.” — 7
-- “Your workspace is separated from other visitors.” — 7
-- “Give each vendor change a next step” — 8
-- “Paste a changelog or RSS address you are allowed to read.” — 11
-- “Use rules like ‘webhook’, ‘deprecation’, or an API version.” — 9
-- “Each matching notice includes an owner, dependency version, and check command.” — 11
-- “The hosted dashboard is a free private workspace for three feeds.” — 11
-- “It does not provide shared team workspaces, accounts, unlimited watches, or a paid plan.” — 14
-- “Use the local CLI for repository-owned mappings with more feeds.” — 10
-- “It does not scan automatically.” — 5
-- “Private, loopback, and link-local addresses are blocked.” — 7
+| Location | Words | Copy | Status |
+| --- | ---: | --- | --- |
+| Hero heading | 7 | Turn vendor changes into assigned action cards | Pass |
+| Hero audience | 9 | For engineers who maintain payment, auth, analytics, or messaging integrations. | Pass |
+| Hero action result | 7 | See matched notices, owners, versions, and checks. | Pass |
+| Hero fact | 5 | You choose the matching keywords. | Tested: `keyword-edit` |
+| Hero fact | 7 | Scans run only when you request them. | Tested: `requested-scans` |
+| Hero fact | 7 | Your workspace is separated from other visitors. | Tested: `workspace-boundary` |
+| Empty action state | 9 | Matched release notes appear here after you scan a feed. | Tested: `hosted-scan-result` |
+| How it works | 8 | Give each vendor change a next step | Pass |
+| How it works | 11 | Paste a changelog or RSS address you are allowed to read. | Pass |
+| How it works | 10 | Use keywords like “webhook”, “deprecation”, or an API version. | Pass |
+| How it works | 11 | Each matching notice includes an owner, dependency version, and check command. | Pass |
+| Scope | 8 | The hosted workspace holds up to three watches. | Tested: `hosted-watch-limit` |
+| Scope | 12 | Use the local CLI when you need four or more watch mappings. | Tested: `cli-more-feeds` |
+| Limitation | 5 | It does not scan automatically. | Tested: `requested-scans` |
+| Limitation | 7 | Private, loopback, and link-local addresses are blocked. | Tested: `workspace-boundary` |
+| Footer | 6 | Vendor notices become assigned action cards. | Pass |
+| Demo banner | 6 | Demo — sample data, nothing is saved | Tested: `demo-local` |
+| Demo banner note | 3 | Discards this demo. | Tested: `demo-isolation-transitions` |
 
-No sentence exceeds 22 words. No banned terms occur.
+## Terminology
 
-Terminology: vendor feed → watch; matching release note → action card; responsible engineer → owner; installed package → affected dependency version; local verification → check command; sandbox → demo; browser-held credential → workspace token.
+| Concept | One term |
+| --- | --- |
+| Vendor source | feed |
+| Saved monitor | watch |
+| Match input | keywords |
+| Output | action card |
+| Assignee | owner |
+| Isolated hosted data | workspace |
+| Local tool | CLI |
 
-Catalog description: “Turn vendor changelog changes into owned integration actions.” (8 words)
+Catalog description: “Turn vendor changes into assigned action cards with owners, versions, and checks.” (12 words)

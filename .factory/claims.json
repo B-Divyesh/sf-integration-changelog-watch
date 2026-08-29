@@ -1,93 +1,22 @@
 [
-  {
-    "id": "sample-action-cards",
-    "claim": "The sample opens with matched notices, owners, and checks.",
-    "where": "landing action and demo dashboard",
-    "test": "npm run build && npm run test:browser -- --grep @claim:sample-action-cards",
-    "sandbox": "fresh browser demo workspace seeded from shipped sample data"
-  },
-  {
-    "id": "csv-export",
-    "claim": "Exports action cards as CSV.",
-    "where": "dashboard export button",
-    "test": "npm run build && npm run test:browser -- --grep @claim:csv-export",
-    "sandbox": "demo action cards produce a header plus one row per action"
-  },
-  {
-    "id": "demo-local",
-    "claim": "Demo data is separate from the real workspace; no analytics, advertising scripts, or third-party fonts run.",
-    "where": "demo banner and privacy page",
-    "test": "npm run build && npm run test:browser -- --grep @claim:demo-local",
-    "sandbox": "fresh demo browser context; acknowledge a sample card and inspect storage and requests"
-  },
-  {
-    "id": "workspace-boundary",
-    "claim": "Workspace records are isolated by browser-held tokens, and private feed addresses are blocked.",
-    "where": "landing fact and privacy/terms pages",
-    "test": "npm run build && npm run test:browser -- --grep @claim:workspace-boundary",
-    "sandbox": "fresh browser context creates two workspace tokens, writes a safe fixture watch to one, proves the other cannot read it, then attempts anonymous and loopback access"
-  },
-  {
-    "id": "redirecting-feeds",
-    "claim": "Redirecting source feeds are rejected instead of followed.",
-    "where": "terms page",
-    "test": "cargo test --locked claim_redirecting_feeds_are_rejected",
-    "sandbox": "a redirect HTTP response is passed through the same feed-response policy used by scans and returns the readable redirect error"
-  },
-  {
-    "id": "requested-scans",
-    "claim": "Scans run only when you request them.",
-    "where": "landing page",
-    "test": "npm run build && npm run test:browser -- --grep @claim:requested-scans",
-    "sandbox": "fresh real workspace; record requests before and after explicitly pressing Scan watched feeds"
-  },
-  {
-    "id": "cli-repository-workflow",
-    "claim": "The CLI stores deduplicated Markdown action cards and updates both the card and state when acknowledged.",
-    "where": "README CLI section",
-    "test": "npm run build && npm run test:browser -- --grep @claim:cli-repository-workflow",
-    "sandbox": "temporary repository mapping with a local shipped-format feed; scan twice, acknowledge it, then inspect both state and the rendered card status"
-  },
-  {
-    "id": "cli-demo-local",
-    "claim": "The CLI demo command makes no network request.",
-    "where": "CLI help and README CLI section",
-    "test": "npm run build && npm run test:browser -- --grep @claim:cli-demo-local",
-    "sandbox": "run the CLI demo with every HTTP proxy pointed at a local request-recording proxy; assert the shipped cards print and the proxy receives no connection"
-  },
-  {
-    "id": "database-persistence",
-    "claim": "The default SQLite database survives restarts when /data is mounted.",
-    "where": "README deployment section",
-    "test": "cargo test --locked default_database_survives_restart_when_data_is_mounted",
-    "sandbox": "temporary SQLite file configured at a mounted-data equivalent path; write a workspace, reconnect, and read it"
-  },
-  {
-    "id": "demo-isolation-transitions",
-    "claim": "The demo makes no API call, resets its sample, and discards it before a real workspace starts.",
-    "where": ".factory/demo.md and demo banner",
-    "test": "npm run build && npm run test:browser -- --grep @claim:demo-isolation-transitions",
-    "sandbox": "fresh browser demo; acknowledge a sample, reset it, then start for real while recording requests and storage"
-  },
-  {
-    "id": "cli-shipped-mapping-local",
-    "claim": "The shipped CLI scan mapping runs from its bundled feed without a network request.",
-    "where": "README CLI section",
-    "test": "npm run build && npm run test:browser -- --grep @claim:cli-shipped-mapping-local",
-    "sandbox": "run the shipped examples/watches.json with all HTTP proxies pointed at a recording proxy"
-  },
-  {
-    "id": "port-only-startup",
-    "claim": "The container starts with only PORT required.",
-    "where": "README deployment section",
-    "test": "cargo test --locked claim_port_only_startup_configuration",
-    "sandbox": "runtime configuration defaults PORT to 8080 and the durable database path to /data without requiring another environment variable"
-  },
-  {
-    "id": "single-replica-durable-data",
-    "claim": "The shipped Container App configuration and runtime guard keep workspace state and rate limits in one durable replica.",
-    "where": "README deployment section",
-    "test": "cargo test --locked claim_single_replica_durable_topology",
-    "sandbox": "inspect the versioned template, reproduce the generic three-replica/no-mount body, and assert the guard restores one replica plus the Azure Files /data mount while preserving the image"
-  }
+  {"id":"sample-action-cards","claim":"The sample opens with a visible matched notice, owner, dependency version, and check.","where":"landing action and demo dashboard","test":"npm run build && npm run test:browser -- --grep @claim:sample-action-cards","sandbox":"fresh 390px demo browser workspace seeded from shipped sample data"},
+  {"id":"csv-export","claim":"Exports action cards as CSV.","where":"dashboard export button","test":"npm run build && npm run test:browser -- --grep @claim:csv-export","sandbox":"demo action cards produce a header plus one row per action"},
+  {"id":"demo-local","claim":"Demo data is separate from the real workspace; no analytics, advertising scripts, or third-party fonts run.","where":"demo banner and privacy page","test":"npm run build && npm run test:browser -- --grep @claim:demo-local","sandbox":"fresh demo browser context; acknowledge a sample card and inspect storage and requests"},
+  {"id":"demo-isolation-transitions","claim":"The demo makes no API call, resets its sample, and discards it before a private workspace starts.","where":".factory/demo.md and demo banner","test":"npm run build && npm run test:browser -- --grep @claim:demo-isolation-transitions","sandbox":"fresh demo browser; acknowledge a sample, reset it, then start a private workspace while recording requests and storage"},
+  {"id":"workspace-boundary","claim":"Workspace records are isolated by browser-held tokens, and private feed addresses are blocked.","where":"landing fact and privacy/terms pages","test":"npm run build && npm run test:browser -- --grep @claim:workspace-boundary","sandbox":"fresh browser context creates two workspace tokens, writes a safe fixture watch to one, proves the other cannot read it, then attempts anonymous and loopback access"},
+  {"id":"hosted-scan-result","claim":"A matching hosted feed notice creates an action card with its keyword, owner, version, and check.","where":"empty action-card state","test":"cargo test --locked claim_hosted_scan_creates_action_card_from_controlled_fixture","sandbox":"temporary SQLite workspace and controlled RSS fixture use the same scan match recorder as the hosted endpoint"},
+  {"id":"hosted-watch-limit","claim":"The hosted workspace holds up to three watches.","where":"landing and README hosted workspace scope","test":"npm run build && npm run test:browser -- --grep @claim:hosted-watch-limit","sandbox":"fresh workspace saves three public fixture watches and receives a readable fourth-watch error"},
+  {"id":"keyword-edit","claim":"You can choose and edit matching keywords.","where":"landing fact and watch controls","test":"npm run build && npm run test:browser -- --grep @claim:keyword-edit","sandbox":"fresh workspace creates a watch, edits keywords, reloads, and reads the saved value"},
+  {"id":"requested-scans","claim":"Scans run only when you request them.","where":"landing page","test":"npm run build && npm run test:browser -- --grep @claim:requested-scans","sandbox":"fresh real workspace records requests before and after pressing Scan watched feeds"},
+  {"id":"redirecting-feeds","claim":"Redirecting source feeds are rejected instead of followed.","where":"terms page","test":"cargo test --locked claim_redirecting_feeds_are_rejected","sandbox":"a redirect HTTP response passes through the feed-response policy and returns the readable redirect error"},
+  {"id":"watch-file-portability","claim":"Watch files export and import in the CLI JSON schema.","where":"dashboard watch-file controls and README","test":"npm run build && npm run test:browser -- --grep @claim:watch-file-portability","sandbox":"demo exports its watch schema, previews a valid import, stores it only in demo storage, and rejects malformed JSON"},
+  {"id":"cli-more-feeds","claim":"The local CLI scans four repository watch mappings.","where":"landing and README hosted workspace scope","test":"npm run build && npm run test:browser -- --grep @claim:cli-more-feeds","sandbox":"temporary repository with four local feeds produces four action records"},
+  {"id":"cli-repository-workflow","claim":"The CLI stores deduplicated Markdown action cards and updates both the card and state when acknowledged.","where":"README CLI section","test":"npm run build && npm run test:browser -- --grep @claim:cli-repository-workflow","sandbox":"temporary repository mapping with a local shipped-format feed; scan twice, acknowledge it, then inspect both state and rendered card status"},
+  {"id":"cli-demo-local","claim":"The CLI demo command makes no network request.","where":"CLI help and README CLI section","test":"npm run build && npm run test:browser -- --grep @claim:cli-demo-local","sandbox":"run the CLI demo with every HTTP proxy pointed at a local request-recording proxy; assert the shipped cards print and the proxy receives no connection"},
+  {"id":"cli-shipped-mapping-local","claim":"The shipped CLI scan mapping runs from its bundled feed without a network request.","where":"README CLI section","test":"npm run build && npm run test:browser -- --grep @claim:cli-shipped-mapping-local","sandbox":"run the shipped examples/watches.json with all HTTP proxies pointed at a recording proxy"},
+  {"id":"api-contract","claim":"The documented API routes enforce workspace authorization and return their documented success or representative error statuses.","where":"README Workspace API table","test":"npm run build && npm run test:browser -- --grep @claim:api-contract","sandbox":"fresh workspace calls every documented method plus anonymous and missing-action error paths"},
+  {"id":"container-build-stage","claim":"The build stage uses the official rust:1-alpine image and runs the locked release build.","where":"README deployment section","test":"npm test -- --grep @claim:container-build-stage","sandbox":"read the versioned Dockerfile and assert its build image, deterministic package installs, and locked Rust build command"},
+  {"id":"database-persistence","claim":"The default SQLite database survives restarts when /data is mounted.","where":"README deployment section","test":"cargo test --locked default_database_survives_restart_when_data_is_mounted","sandbox":"temporary SQLite file configured at a mounted-data equivalent path; write a workspace, reconnect, and read it"},
+  {"id":"port-only-startup","claim":"The container starts with only PORT required.","where":"README deployment section","test":"cargo test --locked claim_port_only_startup_configuration","sandbox":"runtime configuration defaults PORT to 8080 and the durable database path to /data without requiring another environment variable"},
+  {"id":"single-replica-durable-data","claim":"The shipped Container App configuration and runtime guard keep workspace state and rate limits in one durable replica.","where":"README deployment section","test":"cargo test --locked claim_single_replica_durable_topology","sandbox":"inspect the versioned template, reproduce the generic three-replica/no-mount body, and assert the guard restores one replica plus the Azure Files /data mount while preserving the image"}
 ]

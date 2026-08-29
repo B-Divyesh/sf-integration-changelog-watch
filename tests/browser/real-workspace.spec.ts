@@ -55,6 +55,57 @@ test('@claim:workspace-boundary workspace tokens isolate records, reject anonymo
   expect(result).toEqual({ unauthenticated: 401, firstWatch: 201, privateFeed: 400, secondWatches: 200, secondWorkspaceWatchCount: 0 })
 })
 
+test('@claim:hosted-watch-limit saves three watches and explains the fourth-watch limit', async ({ page }) => {
+  await page.goto('/privacy')
+  const result = await page.evaluate(async () => {
+    const { token } = await fetch('/api/workspaces', { method: 'POST' }).then(response => response.json()) as { token: string }
+    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.31' }
+    const makeWatch = (index: number) => ({ vendor: `Vendor ${index}`, url: 'https://1.1.1.1/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 1.0', command: 'npm test' })
+    const statuses = []
+    for (const index of [1, 2, 3, 4]) statuses.push(await fetch('/api/watches', { method: 'POST', headers, body: JSON.stringify(makeWatch(index)) }).then(async response => ({ status: response.status, text: await response.text() })))
+    return statuses
+  })
+  expect(result.slice(0, 3).map(item => item.status)).toEqual([201, 201, 201])
+  expect(result[3]).toMatchObject({ status: 409 })
+  expect(result[3].text).toContain('already has three watches')
+})
+
+test('@claim:keyword-edit saves edited keywords and restores them after reload', async ({ page }) => {
+  await page.goto('/')
+  const watchId = await page.evaluate(async () => {
+    const token = localStorage.getItem('icw:workspace-token')!
+    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.32' }
+    const watch = { vendor: 'Keyword fixture', url: 'https://1.1.1.1/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 1.0', command: 'npm test' }
+    const created = await fetch('/api/watches', { method: 'POST', headers, body: JSON.stringify(watch) }).then(response => response.json()) as { id: number }
+    await fetch(`/api/watches/${created.id}`, { method: 'PUT', headers, body: JSON.stringify({ ...watch, keywords: 'deprecation,webhook' }) })
+    return created.id
+  })
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Edit Keyword fixture' })).toBeVisible()
+  await expect(page.getByText('Keywords: deprecation,webhook')).toBeVisible()
+  expect(watchId).toBeGreaterThan(0)
+})
+
+test('@claim:api-contract covers the documented API methods, workspace boundary, success, and representative errors', async ({ page }) => {
+  await page.goto('/privacy')
+  const result = await page.evaluate(async () => {
+    const health = await fetch('/health')
+    const anonymous = await fetch('/api/watches')
+    const { token } = await fetch('/api/workspaces', { method: 'POST' }).then(response => response.json()) as { token: string }
+    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.33' }
+    const watch = { vendor: 'Contract fixture', url: 'https://1.1.1.1/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 1.0', command: 'npm test' }
+    const created = await fetch('/api/watches', { method: 'POST', headers, body: JSON.stringify(watch) }).then(async response => ({ status: response.status, body: await response.json() as { id: number } }))
+    const watches = await fetch('/api/watches', { headers })
+    const updated = await fetch(`/api/watches/${created.body.id}`, { method: 'PUT', headers, body: JSON.stringify({ ...watch, keywords: 'deprecation' }) })
+    const actions = await fetch('/api/actions', { headers })
+    const missingAction = await fetch('/api/actions/999999', { method: 'POST', headers, body: JSON.stringify({ acknowledged: true }) })
+    const deleted = await fetch(`/api/watches/${created.body.id}`, { method: 'DELETE', headers })
+    const scan = await fetch('/api/scan', { method: 'POST', headers })
+    return { health: health.status, anonymous: anonymous.status, created: created.status, watches: watches.status, updated: updated.status, actions: actions.status, missingAction: missingAction.status, deleted: deleted.status, scan: scan.status }
+  })
+  expect(result).toEqual({ health: 200, anonymous: 401, created: 201, watches: 200, updated: 200, actions: 200, missingAction: 404, deleted: 204, scan: 200 })
+})
+
 test('a fresh workspace token stays valid for parallel authenticated reads', async ({ page }, testInfo) => {
   // This is a backend consistency probe. Running the same 24-read burst in
   // both browser projects would intentionally exceed the per-IP rate limit.
@@ -198,6 +249,25 @@ test('@claim:cli-shipped-mapping-local the shipped CLI scan mapping reads its bu
     await expect(readFile(join(examples, '.integration-changelog-watch/state.json'), 'utf8')).resolves.toContain('acknowledged')
   } finally {
     await new Promise<void>(resolve => proxy.close(() => resolve()))
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('@claim:cli-more-feeds scans four repository watch mappings', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'icw-cli-four-'))
+  try {
+    const watches = []
+    for (let index = 1; index <= 4; index += 1) {
+      const file = `feed-${index}.xml`
+      await writeFile(join(directory, file), `<rss><channel><item><title>Webhook update ${index}</title><description>Webhook migration ${index}</description><link>https://example.com/${index}</link></item></channel></rss>`)
+      watches.push({ vendor: `Fixture ${index}`, url: file, keywords: 'webhook', owner: 'Maya', version: `sdk ${index}`, command: 'npm test' })
+    }
+    const config = join(directory, 'watches.json')
+    await writeFile(config, JSON.stringify({ watches }))
+    await execFileAsync('cargo', ['run', '--quiet', '--', 'scan', '--config', config], { cwd: process.cwd() })
+    const state = JSON.parse(await readFile(join(directory, '.integration-changelog-watch/state.json'), 'utf8')) as { actions: unknown[] }
+    expect(state.actions).toHaveLength(4)
+  } finally {
     await rm(directory, { recursive: true, force: true })
   }
 })

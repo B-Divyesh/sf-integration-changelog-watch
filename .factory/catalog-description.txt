@@ -1,0 +1,1 @@
+Turn vendor changes into assigned action cards with owners, versions, and checks.

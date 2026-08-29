@@ -715,30 +715,7 @@ async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Scan
         };
         let hash = format!("{:x}", Sha256::digest(text.as_bytes()));
         if watch.last_hash.as_deref() != Some(&hash) {
-            for notice in parse_notices(&text, &watch.url) {
-                let body = format!("{} {}", notice.title, notice.excerpt).to_lowercase();
-                if let Some(rule) = watch
-                    .keywords
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|rule| !rule.is_empty())
-                    .find(|rule| body.contains(&rule.to_lowercase()))
-                {
-                    let key = format!(
-                        "{:x}",
-                        Sha256::digest(format!("{}\n{}", notice.title, notice.url).as_bytes())
-                    );
-                    let title = if notice.title.is_empty() {
-                        format!("Matched change from {}", watch.vendor)
-                    } else {
-                        notice.title
-                    };
-                    let inserted = sqlx::query("INSERT OR IGNORE INTO workspace_actions(workspace_id,watch_id,notice_key,title,excerpt,matched,url,owner,version,command,seen_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)")
-                        .bind(workspace).bind(watch.id).bind(key).bind(title).bind(notice.excerpt.chars().take(420).collect::<String>()).bind(rule).bind(notice.url).bind(&watch.owner).bind(&watch.version).bind(&watch.command).bind(Utc::now().to_rfc3339())
-                        .execute(&app.db).await.map_err(internal)?;
-                    made += inserted.rows_affected() as usize;
-                }
-            }
+            made += record_matches(&app.db, workspace, &watch, parse_notices(&text, &watch.url)).await?;
         }
         sqlx::query("UPDATE workspace_watches SET last_hash=?, last_scanned=? WHERE id=? AND workspace_id=?")
             .bind(hash).bind(Utc::now().to_rfc3339()).bind(watch.id).bind(workspace).execute(&app.db).await.map_err(internal)?;
@@ -756,6 +733,44 @@ async fn scan(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<Scan
         failures,
         message,
     }))
+}
+
+/// The feed transport and the match recorder are separate so the exact action
+/// creation path can be checked against a shipped fixture without a live
+/// vendor request. Production scans call this after the same public-feed
+/// validation and response policy used above.
+async fn record_matches(
+    db: &SqlitePool,
+    workspace: i64,
+    watch: &WatchRow,
+    notices: Vec<Notice>,
+) -> ApiResult<usize> {
+    let mut made = 0;
+    for notice in notices {
+        let body = format!("{} {}", notice.title, notice.excerpt).to_lowercase();
+        if let Some(keyword) = watch
+            .keywords
+            .split(',')
+            .map(str::trim)
+            .filter(|keyword| !keyword.is_empty())
+            .find(|keyword| body.contains(&keyword.to_lowercase()))
+        {
+            let key = format!(
+                "{:x}",
+                Sha256::digest(format!("{}\n{}", notice.title, notice.url).as_bytes()),
+            );
+            let title = if notice.title.is_empty() {
+                format!("Matched change from {}", watch.vendor)
+            } else {
+                notice.title
+            };
+            let inserted = sqlx::query("INSERT OR IGNORE INTO workspace_actions(workspace_id,watch_id,notice_key,title,excerpt,matched,url,owner,version,command,seen_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)")
+                .bind(workspace).bind(watch.id).bind(key).bind(title).bind(notice.excerpt.chars().take(420).collect::<String>()).bind(keyword).bind(notice.url).bind(&watch.owner).bind(&watch.version).bind(&watch.command).bind(Utc::now().to_rfc3339())
+                .execute(db).await.map_err(internal)?;
+            made += inserted.rows_affected() as usize;
+        }
+    }
+    Ok(made)
 }
 
 #[derive(FromRow)]
@@ -919,13 +934,13 @@ async fn validate_watch(watch: &NewWatch) -> ApiResult<()> {
     {
         return Err(ApiError(
             StatusCode::BAD_REQUEST,
-            "Provide a vendor, public URL, rules, owner, and check command.".to_owned(),
+                "Provide a vendor, public URL, keywords, owner, and check command.".to_owned(),
         ));
     }
     let fields = [
         ("vendor", watch.vendor.len(), 120usize),
         ("public URL", watch.url.len(), 2048),
-        ("rules", watch.keywords.len(), 500),
+        ("keywords", watch.keywords.len(), 500),
         ("owner", watch.owner.len(), 160),
         ("version", watch.version.len(), 120),
         ("check command", watch.command.len(), 500),
@@ -1378,6 +1393,41 @@ mod tests {
         let notices = parse_notices("<rss><channel><item><title>Webhook deprecation</title><description>Move now</description><link>https://vendor.example/one</link></item><item><title>Webhook retry change</title><description>Read this</description><link>https://vendor.example/two</link></item></channel></rss>", "https://vendor.example/feed.xml");
         assert_eq!(notices.len(), 2);
         assert_eq!(notices[1].url, "https://vendor.example/two");
+    }
+
+    #[tokio::test]
+    async fn claim_hosted_scan_creates_action_card_from_controlled_fixture() {
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        setup(&db).await.unwrap();
+        let token = "f".repeat(64);
+        sqlx::query("INSERT INTO workspaces(token_hash,created_at) VALUES(?,?)")
+            .bind(token_hash(&token))
+            .bind("now")
+            .execute(&db)
+            .await
+            .unwrap();
+        let workspace: i64 = sqlx::query_scalar("SELECT id FROM workspaces")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO workspace_watches(workspace_id,vendor,url,keywords,owner,version,command) VALUES(?,?,?,?,?,?,?)")
+            .bind(workspace).bind("Fixture vendor").bind("https://vendor.example/feed.xml").bind("webhook,deprecation").bind("Maya · Payments").bind("fixture-sdk 2.4").bind("pnpm test:fixture")
+            .execute(&db).await.unwrap();
+        let watch = sqlx::query_as::<_, WatchRow>("SELECT id, vendor, url, keywords, owner, version, command, last_hash FROM workspace_watches")
+            .fetch_one(&db).await.unwrap();
+        let fixture = "<rss><channel><item><title>Webhook deprecation date</title><description>Update webhook signatures before June.</description><link>https://vendor.example/notice</link></item></channel></rss>";
+        assert_eq!(record_matches(&db, workspace, &watch, parse_notices(fixture, &watch.url)).await.unwrap(), 1);
+        let mut actions = list_actions(State(App { db: db.clone(), build: "test".to_owned(), limiter: Arc::new(Mutex::new(HashMap::new())) }), bearer(&token)).await.unwrap().0;
+        let action = actions.remove(0);
+        assert_eq!(action.title, "Webhook deprecation date");
+        assert_eq!(action.matched, "webhook");
+        assert_eq!(action.owner, "Maya · Payments");
+        assert_eq!(action.version, "fixture-sdk 2.4");
+        assert_eq!(action.command, "pnpm test:fixture");
     }
 
     #[test]

@@ -219,6 +219,7 @@ figcaption {
   gap: 16px;
   align-items: center;
 }
+.dash-head h1,
 .dash-head h2,
 .how h2,
 .limits h2,
@@ -232,6 +233,10 @@ figcaption {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+.demo-summary {
+  margin: 8px 0 0;
+  color: var(--muted);
 }
 .notice {
   min-height: 24px;
@@ -322,6 +327,29 @@ code {
 .watches {
   align-self: start;
   box-shadow: 3px 4px 0 #d8c9ad;
+}
+.watch-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.watch-file-actions .text-button {
+  min-width: 44px;
+}
+.import-preview {
+  max-width: 720px;
+  margin: 8px 0 24px;
+  padding: 18px;
+  background: #eadbbb;
+  border: 2px solid var(--ink);
+}
+.import-preview h3,
+.import-preview p {
+  margin-top: 0;
+}
+.import-preview ul {
+  padding-left: 20px;
 }
 .watches article {
   display: grid;
@@ -460,6 +488,35 @@ code {
   border-color: #fffaf0;
   margin-left: 6px;
 }
+.demo-banner small {
+  display: inline-block;
+  margin-left: 8px;
+}
+.demo-dashboard {
+  padding-top: 22px;
+}
+.demo-head h1 {
+  font:
+    700 clamp(2rem, 7vw, 3.2rem) / 1 Georgia,
+    serif;
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+.demo-dashboard .action-list {
+  gap: 12px;
+}
+.demo-dashboard .action {
+  padding: 16px;
+}
+.demo-dashboard .action p {
+  margin-bottom: 10px;
+}
+.demo-dashboard dl {
+  margin-bottom: 10px;
+}
+.demo-controls {
+  margin: 20px 0;
+}
 .legal {
   max-width: 720px;
   padding: 80px 0;
@@ -552,6 +609,16 @@ footer a {
   .demo-banner button {
     margin-left: 0;
     margin-right: 6px;
+  }
+  .demo-banner small {
+    display: block;
+    margin: 4px 0 0;
+  }
+  .demo-dashboard {
+    padding-top: 16px;
+  }
+  .demo-dashboard .dash-buttons {
+    margin-top: 10px;
   }
   footer {
     display: block;
