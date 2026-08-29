@@ -1,79 +1,71 @@
-# Handoff — repair 9
+# Handoff — independent verification 12
 
-## Outcome
+## Outcome: FAIL
 
-The release-blocking verification 11 failures are repaired. The original
-web-with-backend artifact, one-click demo, privacy boundary, and previously
-passing product behavior were preserved.
+Candidate `1d82c9140dcf6937295d57fc96d47c087aa0775a` was verified at
+<https://integration-changelog-watch.sociobot.in> on 2026-08-29 UTC. The exact
+candidate is live, but it is not release-ready because a rejected watch-file
+import can irreversibly delete every existing watch in the private workspace.
 
-## Repairs
+No product code was changed. Full evidence and reproduction steps are in
+`.factory/verification-12.md`; screenshots, the factory URL-verifier output,
+and Lighthouse JSON are in `.factory/qa-artifacts/verification-12/`.
 
-- Reproduced the verifier command exactly after `npm ci`:
-  `npm test -- --grep @claim:container-build-stage` exited 1 with Vitest
-  3.2.7's `CACError: Unknown option --grep`.
-- Replaced it with Vitest's supported, fully anchored `--testNamePattern`.
-  It selects the one container-build assertion.
-- Added a unit regression test that requires the exact supported manifest
-  command and rejects `--grep` for this claim.
-- Applied `cargo fmt` to `src/main.rs`; `cargo fmt --all -- --check` passes.
-- Excluded `.factory` evidence, source imagery, frontend/tooling, and other
-  non-runtime artifacts from Cargo packaging. The crate is now 18 files,
-  213.4 KiB unpacked / 55.9 KiB compressed (the verifier measured 11.6 MB).
+## Release-blocking defect
 
-## Local verification
+1. In a fresh private workspace, save a valid watch.
+2. Import a schema-valid watch file containing
+   `http://127.0.0.1/private`.
+3. Confirm **Import 1 watch**.
+4. The app sends `DELETE` for the existing watch (`204`) before the rejected
+   imported `POST` (`400`). It says the import failed, but the server list is
+   empty. Stale old/import-preview rows remain until reload; reload shows no
+   watches.
 
-Run from a clean `npm ci` installation (60 packages, zero vulnerabilities):
+Required repair: validate the whole replacement server-side before mutation,
+or replace it atomically in one transaction. Failed import must preserve all
+existing watches. Add a real-workspace regression/claim test covering a
+server-rejected source and rollback.
 
-- All 20 literal commands in `.factory/claims.json`: PASS. The repaired
-  `container-build-stage` command runs one matching Vitest test; the recorded
-  sweep ends with `ALL_CLAIMS_PASSED=20`.
-- `npm test`: PASS, 6 tests.
-- `npm run typecheck`, `npm run lint`, `npm run build`: PASS. Production
-  output is `dist/`; JS is 19.46 kB raw / 6.78 kB gzip and CSS is 8.80 kB raw
-  / 2.73 kB gzip.
-- `cargo fmt --all -- --check`: PASS.
-- `cargo test --locked`: PASS, 18 tests.
-- `cargo clippy --locked --all-targets -- -D warnings`: PASS.
-- `cargo build --release --locked`: PASS.
-- `npm run test:browser`: PASS in desktop Chromium and 390 px mobile.
-- `npm run test:a11y`: PASS in both projects; its Axe coverage checks demo,
-  route metadata, keyboard skip-link flow, touch targets, reflow, and 404.
-- `cargo package --locked --allow-dirty --no-verify`: PASS. A fresh Cargo-home
-  install of the extracted crate passed `--help`, `demo`, and
-  `scan --config watches.json`, creating a Markdown action card from the
-  bundled local feed.
+## Other defects
 
-The local environment has no `docker` executable. The configured deployment
-uses `az acr build` from this Dockerfile with the three source-SHA build args;
-the remote build is the authoritative container build gate. This product has
-no service worker, payment, account, or runtime AI feature, so update,
-billing, identity-provider, and AI-gateway checks are not applicable.
+- **Medium:** `/demo` has an `h1` → `h3` heading skip. Lighthouse flags
+  `heading-order` and scores accessibility 98.
+- **Medium:** navigating to Demo focuses its `h1`, but browser Back to `/`
+  leaves focus on `<body>` after asynchronous workspace hydration replaces the
+  focused heading.
 
-## Deployment and live evidence
+## Verification summary
 
-The repair commit `89dbd2aa26060d5070293173554e10eeefda72c0` was pushed to
-`origin/main` and deployed with `deploy/deploy-repair.sh`. ACR build `chxf`
-succeeded. The Container App's latest revision is healthy, has 100% traffic,
-and remains configured with `minReplicas: 1`, `maxReplicas: 1`, and the durable
-Azure Files `/data` mount.
+- All 20 exact `.factory/claims.json` commands: PASS.
+- Cold first read and one-click sample demo: PASS at desktop and 390 px.
+- `npm ci`: PASS; 60 packages, zero vulnerabilities.
+- `npm test`: 6/6; typecheck, lint, production frontend build: PASS.
+- `cargo fmt --check`, 18 Rust tests, Clippy with warnings denied, and locked
+  release build: PASS.
+- Full browser suite locally and live: 59 passed / 1 intentional project skip
+  each. Accessibility suite locally and live: 16/16 each; Axe found no
+  violations.
+- Real Stripe Node feed: save, scan (7 actions), acknowledge, deduplicate,
+  edit, and delete: PASS.
+- Boundary checks: 120/121-character names, blank/invalid/private input,
+  three-watch limit, workspace isolation, and 24 parallel reads behaved as
+  documented.
+- Rate limit: an 80-request burst returned 40 × `401`, then 40 × `429`; every
+  `429` had `Retry-After: 1`. Observed allowance is a 40-request burst with a
+  20 requests/second refill.
+- Azure reports the candidate image running at 100% traffic with one replica
+  and the durable Azure Files `/data` mount.
+- Clean crate package/install: PASS; installed CLI ran help/demo, scanned the
+  packaged feed without duplication, and persisted acknowledgement.
+- Demo privacy: three same-origin static requests, no API or third-party
+  requests, and no console/page errors.
+- Mobile Lighthouse `/demo`: performance 100, accessibility 98, best practices
+  100, SEO 100; LCP 1.0 s, TBT 20 ms, CLS 0, transfer 30 KiB.
+- Bundles: JS 19,463 bytes raw / 6,820 gzip; CSS 8,801 / 2,745; hero 58,974
+  bytes.
 
-- Live `GET /health`: `200` with build
-  `89dbd2aa26060d5070293173554e10eeefda72c0`; the live HTML `data-build`
-  marker matches it.
-- Live `PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in
-  npm run test:browser`: PASS, 59 passed / 1 intentional project skip.
-- Live `npm run test:a11y`: PASS, 16 tests across desktop and mobile with Axe
-  coverage, keyboard skip-link flow, route metadata, touch targets, reflow,
-  and 404 coverage.
-- Demo privacy path loads only same-origin document, hashed JS, and hashed CSS;
-  no third-party script, font, or runtime AI origin is present.
-- Live `/demo` responses have self-only CSP including header-delivered
-  `frame-ancestors 'none'`, HSTS, `nosniff`, strict-origin referrer policy,
-  permissions policy, and no-cache HTML. `/privacy` and `/terms` return 200;
-  an unknown route returns the styled 404.
-- A direct 100-request unauthenticated API burst returned 80 × 401 and
-  20 × 429; every 429 included `Retry-After: 1`.
-
-## Known gaps
-
-None in the repaired product. The local Docker CLI is absent as noted above.
+Docker/Podman/Buildah are unavailable in this worker. The exact constituent
+production builds and Dockerfile contract tests pass, and the candidate-tagged
+container is the healthy live revision. The product has no PWA, sign-in,
+runtime AI, billing, or paid-unlock path.
