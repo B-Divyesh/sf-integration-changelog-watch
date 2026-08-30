@@ -1,0 +1,33 @@
+{
+  "build": {
+    "build": "f2285321d9f76bfcf286a2bd6c441258df593f9f",
+    "ok": true
+  },
+  "home": {
+    "title": "Integration Changelog Watch — Assign vendor changes",
+    "h1": "Turn vendor changes into assigned action cards",
+    "description": "Turn vendor release notes into assigned action cards with an owner, version, and local check.",
+    "overflow": 0,
+    "keys": [],
+    "ctaBox": {
+      "x": 16,
+      "y": 391.828125,
+      "width": 241.671875,
+      "height": 46
+    }
+  },
+  "demo": {
+    "url": "https://integration-changelog-watch.sociobot.in/?demo=1",
+    "title": "Demo — Integration Changelog Watch",
+    "canonical": "https://integration-changelog-watch.sociobot.in/demo",
+    "banner": "Demo — sample data, nothing is saved Reset demoStart a private workspaceDiscards this demo.",
+    "focused": "Sample action cards",
+    "overflow": 0,
+    "realKeys": [],
+    "allSampleFieldsInFirstViewport": true,
+    "workspaceCreates": 0,
+    "apiRequests": [],
+    "resetRestored": true
+  },
+  "consoleErrors": []
+}
