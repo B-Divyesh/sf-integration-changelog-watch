@@ -266,7 +266,7 @@ test('@claim:cli-repository-workflow stores hashes, action cards, and acknowledg
     expect(state.actions).toHaveLength(1)
     const cardPath = join(directory, `.integration-changelog-watch/actions/${state.actions[0].id}.md`)
     await expect(readFile(cardPath, 'utf8')).resolves.toContain('Webhook update')
-    await expect(readFile(cardPath, 'utf8')).resolves.toContain('Matched keyword: webhook')
+    await expect(readFile(cardPath, 'utf8')).resolves.toContain('**Matched keyword:** webhook')
     await execFileAsync('cargo', ['run', '--quiet', '--', 'ack', '--config', config, '--id', state.actions[0].id], { cwd: process.cwd() })
     const acknowledged = JSON.parse(await readFile(join(directory, '.integration-changelog-watch/state.json'), 'utf8')) as { actions: Array<{ acknowledged: boolean }> }
     expect(acknowledged.actions[0].acknowledged).toBe(true)
