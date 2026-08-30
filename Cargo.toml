@@ -2,7 +2,7 @@
 name = "integration-changelog-watch"
 version = "1.0.0"
 edition = "2021"
-description = "Turn vendor changelog changes into owned integration actions."
+description = "Turn vendor changes into assigned action cards."
 license = "MIT"
 repository = "https://github.com/B-Divyesh/sf-integration-changelog-watch"
 exclude = [

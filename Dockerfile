@@ -10,8 +10,7 @@ WORKDIR /app
 RUN apk add --no-cache musl-dev pkgconfig
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-# Use the current stable Rust toolchain: the lockfile includes ICU crates
-# whose published MSRV advances with stable Rust.
+# The floating official major tag keeps pace with dependency MSRV changes.
 RUN cargo build --release --locked
 RUN printf '%s' "$BUILD_SHA" > /build-sha
 

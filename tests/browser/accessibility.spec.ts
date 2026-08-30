@@ -35,6 +35,7 @@ test('demo uses a complete heading outline and browser Back restores focus to th
 test('every app route supplies route-specific titles, descriptions, previews, and canonicals', async ({ page }) => {
   const expected = [
     ['/', 'Integration Changelog Watch — Assign vendor changes', 'Turn vendor release notes into assigned action cards with an owner, version, and local check.', '/'],
+    ['/?demo=1', 'Demo — Integration Changelog Watch', 'Explore sample vendor notices and assigned action cards. Demo changes stay separate from your private workspace.', '/demo'],
     ['/demo', 'Demo — Integration Changelog Watch', 'Explore sample vendor notices and assigned action cards. Demo changes stay separate from your private workspace.', '/demo'],
     ['/privacy', 'Privacy — Integration Changelog Watch', 'Read how Integration Changelog Watch separates demo data, workspace records, and third-party requests.', '/privacy'],
     ['/terms', 'Terms — Integration Changelog Watch', 'Read the public-source and responsible-use terms for Integration Changelog Watch.', '/terms'],

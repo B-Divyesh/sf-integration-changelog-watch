@@ -16,7 +16,7 @@ The container uses durable `/data` by default. On a host without that mount, use
 
 For frontend development, use `npm run dev`. Run `npm test` and `npm run typecheck` for code checks. After `npm run build`, run `npm run test:browser` for browser coverage. The exact claim commands live in `.factory/claims.json`.
 
-Open `http://localhost:8080/demo` for a one-click sandbox. Demo data uses `demo:integration-changelog-watch` browser storage. **Start a private workspace** discards it.
+Open `http://localhost:8080/?demo=1` for a one-click sandbox. Demo data uses `demo:integration-changelog-watch` browser storage. **Start a private workspace** discards it.
 
 ## Workspace API
 
@@ -62,6 +62,6 @@ Turn on a schedule for any watch when you want automatic scans. Scheduled watche
 
 Build the repository image with `docker build --build-arg BUILD_SHA=dev -t integration-changelog-watch .`. The build stage uses the official `rust:1-alpine` image. It starts with only `PORT` required (default `8080`). The shipped Container App configuration uses one replica and mounts durable Azure Files at `/data`, where SQLite persists at `/data/changelog-watch.db`. A production topology guard closes workspace APIs and restores that configuration if a generic deploy removes it. SQLite uses the Azure Files-compatible `unix-dotfile` VFS. Keep one replica so workspace state has one owner.
 
-See `/privacy` and `/terms` for data handling and source rules.
+See `/privacy` and `/terms` for data handling and source safeguards.
 
 MIT licensed. Built by Param Factory.

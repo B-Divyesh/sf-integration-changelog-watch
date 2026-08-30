@@ -13,6 +13,9 @@ let actions: Action[] = []
 let active = 'home'
 let statusMessage = ''
 let workspacePromise: Promise<string> | undefined
+let workspacePromiseRoute = -1
+let routeVersion = 0
+let realRequestController: AbortController | undefined
 let importPreview: Watch[] | undefined
 const storageKey = () => (demo ? demoKey : realKey)
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!))
@@ -35,45 +38,61 @@ function save() {
 }
 
 async function ensureWorkspace() {
+  const requestRoute = routeVersion
+  const controller = realRequestController
+  if (demo || active !== 'home' || !controller) throw new DOMException('Private workspace request cancelled.', 'AbortError')
   let token = localStorage.getItem(workspaceKey)
   if (token) return token
-  workspacePromise ??= (async () => {
-    const response = await fetch('/api/workspaces', { method: 'POST' })
-    if (!response.ok) throw new Error('Could not create a private workspace.')
-    const created = (await response.json() as { token: string }).token
-    localStorage.setItem(workspaceKey, created)
-    return created
-  })()
+  if (!workspacePromise || workspacePromiseRoute !== requestRoute) {
+    workspacePromiseRoute = requestRoute
+    workspacePromise = (async () => {
+      const response = await fetch('/api/workspaces', { method: 'POST', signal: controller.signal })
+      if (!response.ok) throw new Error('Could not create a private workspace.')
+      const created = (await response.json() as { token: string }).token
+      if (demo || active !== 'home' || routeVersion !== requestRoute || controller.signal.aborted) {
+        throw new DOMException('Private workspace request cancelled.', 'AbortError')
+      }
+      localStorage.setItem(workspaceKey, created)
+      return created
+    })()
+  }
   try {
     return await workspacePromise
   } catch (error) {
-    workspacePromise = undefined
+    if (workspacePromiseRoute === requestRoute) workspacePromise = undefined
     throw error
   }
 }
 
 async function api(path: string, init: RequestInit = {}) {
+  const requestRoute = routeVersion
+  const controller = realRequestController
+  if (demo || active !== 'home' || !controller) throw new DOMException('Private workspace request cancelled.', 'AbortError')
   const token = await ensureWorkspace()
+  if (demo || active !== 'home' || routeVersion !== requestRoute || controller.signal.aborted) {
+    throw new DOMException('Private workspace request cancelled.', 'AbortError')
+  }
   const headers = new Headers(init.headers)
   headers.set('Authorization', `Bearer ${token}`)
-  return fetch(path, { ...init, headers })
+  return fetch(path, { ...init, headers, signal: controller.signal })
 }
 
 async function hydrateReal(restoreRouteFocus = false) {
   if (demo) return
+  const requestRoute = routeVersion
   try {
     const [watchResponse, actionResponse] = await Promise.all([api('/api/watches'), api('/api/actions')])
     if (!watchResponse.ok || !actionResponse.ok) throw new Error('Could not load this workspace.')
     // A visitor can enter the demo while these real-workspace reads are in
     // flight. Never let their late response overwrite demo sample storage.
-    if (demo) return
+    if (demo || active !== 'home' || routeVersion !== requestRoute) return
     watches = await watchResponse.json() as Watch[]
     actions = await actionResponse.json() as Action[]
     localStorage.setItem(realKey, JSON.stringify({ watches, actions }))
     render()
     if (restoreRouteFocus) document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
   } catch {
-    if (demo) return
+    if (demo || active !== 'home' || routeVersion !== requestRoute) return
     statusMessage = 'Your private workspace could not load. Check your connection, then reload.'
     const notice = document.querySelector<HTMLElement>('#notice')
     if (notice) notice.textContent = statusMessage
@@ -117,7 +136,7 @@ function home() {
 function legal(kind: 'privacy' | 'terms') {
   const privacy = kind === 'privacy'
   document.title = `${privacy ? 'Privacy' : 'Terms'} — Integration Changelog Watch`
-  return `<article class="legal"><h1 tabindex="-1">${privacy ? 'Privacy for Integration Changelog Watch' : 'Terms for Integration Changelog Watch'}</h1><p>${privacy ? 'Demo data stays in separate browser storage. Real workspaces use a random browser-held token and are not visible to other workspace tokens.' : 'Use only public changelog and RSS addresses that you are allowed to read. You are responsible for your matching rules and follow-up work.'}</p><h2>${privacy ? 'Data handling' : 'Public sources'}</h2><p>${privacy ? 'No analytics, advertising scripts, or third-party fonts run here. The server stores watches and action cards only inside the workspace token you create.' : 'Private, loopback, link-local, and redirecting source addresses are blocked to protect the service.'}</p><p><a class="return-home" href="/">Return home</a></p></article>`
+  return `<article class="legal"><h1 tabindex="-1">${privacy ? 'Privacy for Integration Changelog Watch' : 'Terms for Integration Changelog Watch'}</h1><p>${privacy ? 'Demo data stays in separate browser storage. Real workspaces use a random browser-held token and are not visible to other workspace tokens.' : 'Use only public changelog and RSS addresses that you are allowed to read. You are responsible for your keywords and follow-up work.'}</p><h2>${privacy ? 'Data handling' : 'Public sources'}</h2><p>${privacy ? 'No analytics, advertising scripts, or third-party fonts run here. The server stores watches and action cards only inside the workspace token you create.' : 'Private, loopback, link-local, and redirecting source addresses are blocked to protect the service.'}</p><p><a class="return-home" href="/">Return home</a></p></article>`
 }
 
 function setMetadata() {
@@ -156,20 +175,26 @@ function restoreHashTarget() {
 function render() {
   setMetadata()
   const pageName = active === 'privacy' ? 'Privacy' : active === 'terms' ? 'Terms' : demo ? 'Demo' : 'Integration Changelog Watch'
-  app.innerHTML = `<a class="skip" href="#main">Skip to content</a><header><a class="wordmark" href="/" data-route="home"><span aria-hidden="true">▰</span> Changelog Watch</a><nav aria-label="Main navigation"><a href="/demo" data-route="demo">Demo</a><a href="/#how">How it works</a><a href="/privacy" data-route="privacy">Privacy</a></nav></header>${demo ? `<aside class="demo-banner" aria-label="Demo controls">Demo — sample data, nothing is saved <span><button id="reset-demo">Reset demo</button><button id="start-real">Start a private workspace</button><small>Discards this demo.</small></span></aside>` : ''}<main id="main" tabindex="-1">${active === 'privacy' || active === 'terms' ? legal(active) : demo ? dashboard(true) : home()}</main><p class="sr-only" aria-live="polite" aria-atomic="true">${pageName}</p><footer><p>Vendor notices become assigned action cards.</p><p><a href="/privacy" data-route="privacy">Privacy</a> · <a href="/terms" data-route="terms">Terms</a> · Built by Param Factory · build ${escape(buildIdentity)}</p></footer>`
+  app.innerHTML = `<a class="skip" href="#main">Skip to content</a><header><a class="wordmark" href="/" data-route="home"><span aria-hidden="true">▰</span> Changelog Watch</a><nav aria-label="Main navigation"><a href="/?demo=1" data-route="demo">Demo</a><a href="/#how">How it works</a><a href="/privacy" data-route="privacy">Privacy</a></nav></header>${demo ? `<aside class="demo-banner" aria-label="Demo controls">Demo — sample data, nothing is saved <span><button id="reset-demo">Reset demo</button><button id="start-real">Start a private workspace</button><small>Discards this demo.</small></span></aside>` : ''}<main id="main" tabindex="-1">${active === 'privacy' || active === 'terms' ? legal(active) : demo ? dashboard(true) : home()}</main><p class="sr-only" aria-live="polite" aria-atomic="true">${pageName}</p><footer><p>Vendor notices become assigned action cards.</p><p><a href="/privacy" data-route="privacy">Privacy</a> · <a href="/terms" data-route="terms">Terms</a> · Built by Param Factory · build ${escape(buildIdentity)}</p></footer>`
   bind()
   restoreHashTarget()
 }
 
 function route(path: string, moveFocus = false) {
+  routeVersion += 1
+  realRequestController?.abort()
+  realRequestController = undefined
+  workspacePromise = undefined
+  workspacePromiseRoute = -1
   active = path.includes('privacy') ? 'privacy' : path.includes('terms') ? 'terms' : 'home'
   demo = path === '/demo' || new URLSearchParams(location.search).get('demo') === '1'
+  if (!demo && active === 'home') realRequestController = new AbortController()
   importPreview = undefined
   load()
   render()
   // Legal pages are informational routes. They must not create a workspace or
   // make dashboard API requests merely because someone reads their terms.
-  if (!demo && active === 'home') void hydrateReal(moveFocus)
+  if (!demo && active === 'home' && localStorage.getItem(workspaceKey)) void hydrateReal(moveFocus)
   if (moveFocus) document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
 }
 
@@ -335,7 +360,7 @@ function bind() {
     event.preventDefault()
     navigate((link as HTMLAnchorElement).getAttribute('href')!)
   }))
-  document.querySelector('#try-demo')?.addEventListener('click', () => navigate('/demo'))
+  document.querySelector('#try-demo')?.addEventListener('click', () => navigate('/?demo=1'))
   document.querySelector('#add-watch, #empty-add')?.addEventListener('click', () => void addWatch())
   document.querySelectorAll<HTMLButtonElement>('.edit-watch').forEach(button => button.addEventListener('click', () => {
     const watch = watches.find(item => String(item.id) === button.dataset.watch)
@@ -354,7 +379,11 @@ function bind() {
     if (watch) void stopSchedule(watch)
   }))
   document.querySelector('#reset-demo')?.addEventListener('click', () => { localStorage.removeItem(demoKey); load(); render() })
-  document.querySelector('#start-real')?.addEventListener('click', () => { localStorage.removeItem(demoKey); navigate('/') })
+  document.querySelector('#start-real')?.addEventListener('click', () => {
+    localStorage.removeItem(demoKey)
+    navigate('/')
+    if (!localStorage.getItem(workspaceKey)) void hydrateReal(true)
+  })
   document.querySelector('#export-watches')?.addEventListener('click', () => download('integration-changelog-watches.json', watchFile(), 'application/json'))
   document.querySelector('#import-watches')?.addEventListener('click', () => document.querySelector<HTMLInputElement>('#watch-file')?.click())
   document.querySelector<HTMLInputElement>('#watch-file')?.addEventListener('change', async event => {

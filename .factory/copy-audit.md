@@ -11,9 +11,9 @@ All visitor-facing landing sentences are below 22 words. No banned marketing ter
 | Hero fact | 6 | No account or payment is required. | Tested: `no-account-or-payment` |
 | Hero fact | 7 | Your workspace is separated from other visitors. | Tested: `workspace-boundary` |
 | Empty action state | 10 | Matched release notes appear here after you scan a feed. | Tested: `hosted-scan-result` |
-| How it works | 8 | Give each vendor change a next step | Pass |
+| How it works | 7 | Give each vendor change a next step | Pass |
 | How it works | 11 | Paste a changelog or RSS address you are allowed to read. | Pass |
-| How it works | 10 | Use keywords like “webhook”, “deprecation”, or an API version. | Pass |
+| How it works | 9 | Use keywords like “webhook”, “deprecation”, or an API version. | Pass |
 | How it works | 11 | Each matching notice includes an owner, dependency version, and check command. | Tested: `hosted-scan-result` |
 | Hosted workspace limits | 8 | The hosted workspace holds up to three watches. | Tested: `hosted-watch-limit` |
 | Hosted workspace limits | 8 | Use the local CLI for a four-watch mapping. | Tested: `cli-more-feeds` |
@@ -29,9 +29,21 @@ All visitor-facing landing sentences are below 22 words. No banned marketing ter
 | Schedule failure | 9 | Last run error: Could not reach this public feed. | Tested: `scheduled-run-status` |
 | Watch-file preview | 8 | A rejected import leaves your current watches unchanged. | Tested: `watch-file-rejection-preserves-watches` |
 
+## Legal route check
+
+| Route | Words | Copy | Status |
+| --- | ---: | --- | --- |
+| Privacy | 7 | Demo data stays in separate browser storage. | Tested: `demo-local` |
+| Privacy | 15 | Real workspaces use a random browser-held token and are not visible to other workspace tokens. | Tested: `workspace-boundary` |
+| Privacy | 9 | No analytics, advertising scripts, or third-party fonts run here. | Tested: `demo-local` |
+| Privacy | 14 | The server stores watches and action cards only inside the workspace token you create. | Tested: `workspace-boundary` |
+| Terms | 13 | Use only public changelog and RSS addresses that you are allowed to read. | Instruction |
+| Terms | 9 | You are responsible for your keywords and follow-up work. | Instruction |
+| Terms | 12 | Private, loopback, link-local, and redirecting source addresses are blocked to protect the service. | Tested: `workspace-boundary`, `redirecting-feeds` |
+
 ## README check
 
-The README uses short sentences for setup, API, scheduling, and deployment. The longest deployment sentence has 20 words. Every product claim in the README is mapped in `.factory/claims.json`.
+The README uses short sentences for setup, API, scheduling, and deployment. The longest deployment sentence has 20 words. Every product claim in the README is mapped in `.factory/claims.json`. The catalog description starts with “Track” and has 85 characters before its newline.
 
 ## Terminology
 

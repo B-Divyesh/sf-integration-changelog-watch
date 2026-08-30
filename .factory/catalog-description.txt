@@ -1,1 +1,1 @@
-Track vendor changes and queue assigned action cards with owners, versions, and checks.
+Track vendor release notes and create action cards with owners, versions, and checks.

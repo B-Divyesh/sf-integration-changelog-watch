@@ -1604,7 +1604,7 @@ fn print_help() {
 }
 
 fn print_demo_markdown() {
-    println!("# Integration changelog watch demo\n\n## Stripe retires legacy webhook event format\n\n- **Status:** Needs acknowledgement\n- **Matched rule:** webhook\n- **Owner:** Maya · Payments\n- **Affected dependency:** stripe-node 16.2\n- **Check:** `pnpm test:stripe`\n\nReview signature parsing and event fixtures.\n\n## Auth0 changes refresh token rotation defaults\n\n- **Status:** Needs acknowledgement\n- **Matched rule:** token\n- **Owner:** Ishan · Identity\n- **Affected dependency:** auth0-spa-js 2.1\n- **Check:** `pnpm test:auth`\n\nCheck explicit configuration before the next environment.");
+    println!("# Integration changelog watch demo\n\n## Stripe retires legacy webhook event format\n\n- **Status:** Needs acknowledgement\n- **Matched keyword:** webhook\n- **Owner:** Maya · Payments\n- **Affected dependency:** stripe-node 16.2\n- **Check:** `pnpm test:stripe`\n\nReview signature parsing and event fixtures.\n\n## Auth0 changes refresh token rotation defaults\n\n- **Status:** Needs acknowledgement\n- **Matched keyword:** token\n- **Owner:** Ishan · Identity\n- **Affected dependency:** auth0-spa-js 2.1\n- **Check:** `pnpm test:auth`\n\nCheck explicit configuration before the next environment.");
 }
 
 async fn cli_scan(path: &str) -> Result<(), String> {
@@ -1648,7 +1648,7 @@ async fn cli_scan(path: &str) -> Result<(), String> {
                 } else {
                     &watch.version
                 };
-                let card = format!("# {title}\n\n- **Action ID:** `{id}`\n- **Status:** Needs acknowledgement\n- **Matched rule:** {rule}\n- **Owner:** {}\n- **Affected dependency:** {dependency}\n- **Check:** `{}`\n- **Notice:** {}\n\n{}\n", watch.owner, watch.command, notice.url, notice.excerpt);
+                let card = format!("# {title}\n\n- **Action ID:** `{id}`\n- **Status:** Needs acknowledgement\n- **Matched keyword:** {rule}\n- **Owner:** {}\n- **Affected dependency:** {dependency}\n- **Check:** `{}`\n- **Notice:** {}\n\n{}\n", watch.owner, watch.command, notice.url, notice.excerpt);
                 std::fs::create_dir_all(state_dir.join("actions")).map_err(|_| {
                     "could not create the repository action-card directory".to_owned()
                 })?;

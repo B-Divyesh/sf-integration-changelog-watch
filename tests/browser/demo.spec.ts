@@ -5,7 +5,7 @@ test('@claim:sample-action-cards opens the seeded demo workspace', async ({ page
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
   await page.getByRole('button', { name: 'Try it with sample data' }).click()
-  await expect(page).toHaveURL(/\/demo$/)
+  await expect(page).toHaveURL(/[?&]demo=1$/)
   await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible()
   await expect(page.getByRole('heading', { level: 1, name: 'Sample action cards' })).toBeVisible()
   await expect(page.getByText('Maya · Payments').first()).toBeVisible()
@@ -23,13 +23,13 @@ test('@claim:sample-action-cards opens the seeded demo workspace', async ({ page
 })
 
 test('an in-flight real workspace hydration cannot overwrite the demo sample', async ({ page }) => {
-  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'f'.repeat(64) }) }))
+  await page.addInitScript(token => localStorage.setItem('icw:workspace-token', token), 'f'.repeat(64))
   let releaseRead!: () => void
   const delayedRead = new Promise<void>(resolve => { releaseRead = resolve })
   for (const path of ['**/api/watches', '**/api/actions']) {
     await page.route(path, async route => {
       await delayedRead
-      await route.fulfill({ contentType: 'application/json', body: '[]' })
+      await route.fulfill({ contentType: 'application/json', body: '[]' }).catch(() => {})
     })
   }
   const watchesRequested = page.waitForRequest('**/api/watches')
@@ -77,16 +77,31 @@ test('@claim:demo-local demo stays same-origin and does not write real workspace
   await expect(page.getByText('No actions need acknowledgement')).toBeVisible()
   const origin = new URL(page.url()).origin
   expect(requests.every(url => new URL(url).origin === origin)).toBe(true)
-  expect(await page.evaluate(() => localStorage.getItem('icw:workspace'))).toBeNull()
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('icw:')))).toEqual([])
   expect(await page.evaluate(() => localStorage.getItem('demo:integration-changelog-watch'))).not.toBeNull()
 })
 
-test('@claim:demo-isolation-transitions demo makes no API call, resets its sample, and discards it before real work starts', async ({ page }) => {
+test('@claim:demo-isolation-transitions the landing demo path cannot create or persist a real workspace', async ({ page }) => {
   const apiRequests: string[] = []
+  let workspaceCreates = 0
+  let releaseWorkspace!: () => void
+  const delayedWorkspace = new Promise<void>(resolve => { releaseWorkspace = resolve })
+  await page.route('**/api/workspaces', async route => {
+    workspaceCreates += 1
+    await delayedWorkspace
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'd'.repeat(64) }) })
+  })
   page.on('request', request => {
     if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url())
   })
-  await page.goto('/demo')
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Try it with sample data' }).click()
+  await expect(page).toHaveURL(/[?&]demo=1$/)
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible()
+  await page.waitForTimeout(250)
+  expect(workspaceCreates).toBe(0)
+  expect(apiRequests).toEqual([])
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('icw:')))).toEqual([])
   await page.getByRole('button', { name: 'Acknowledge action' }).click()
   await expect(page.getByText('No actions need acknowledgement')).toBeVisible()
   await page.getByRole('button', { name: 'Reset demo' }).click()
@@ -94,8 +109,10 @@ test('@claim:demo-isolation-transitions demo makes no API call, resets its sampl
   expect(apiRequests).toEqual([])
   await page.getByRole('button', { name: 'Start a private workspace' }).click()
   await expect(page).toHaveURL(/\/$/)
-  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  await expect.poll(() => workspaceCreates).toBe(1)
   expect(await page.evaluate(() => localStorage.getItem('demo:integration-changelog-watch'))).toBeNull()
+  releaseWorkspace()
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
 })
 
 test('@claim:watch-file-portability exports, previews, and imports the CLI watch schema inside demo storage', async ({ page }) => {

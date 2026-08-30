@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,9 +8,20 @@ import { createServer } from 'node:net'
 
 const execFileAsync = promisify(execFile)
 
+async function seedWorkspaceToken(page: Page, token: string) {
+  await page.addInitScript(value => localStorage.setItem('icw:workspace-token', value), token)
+}
+
+async function startPrivateWorkspace(page: Page) {
+  await page.goto('/?demo=1')
+  await page.getByRole('button', { name: 'Start a private workspace' }).click()
+  await expect(page).toHaveURL('/')
+  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+}
+
 test('real workspace renders the server action schema and acknowledges its numeric ID', async ({ page }) => {
   let acknowledged = false
-  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'a'.repeat(64) }) }))
+  await seedWorkspaceToken(page, 'a'.repeat(64))
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 7, vendor: 'Vendor', url: 'https://vendor.example/feed', keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }]) }))
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 42, watchId: 7, title: 'Webhook change', excerpt: 'A real feed notice', matched: 'webhook', url: 'https://vendor.example/notice', owner: 'Maya', version: 'vendor-sdk 4.2', command: 'npm test', acknowledged, seenAt: 'Today' }]) }))
   await page.route('**/api/actions/42', async route => {
@@ -29,7 +40,7 @@ test('real workspace renders the server action schema and acknowledges its numer
 
 test('a scheduled watch shows its consent, run status, failure, and stop control', async ({ page }) => {
   const watch = { id: 7, vendor: 'Scheduled vendor', url: 'https://vendor.example/feed', keywords: 'webhook', owner: 'Maya', version: 'sdk 3.0', command: 'npm test', scheduleMinutes: 60, lastScheduledAt: '2026-08-29T12:00:00Z', nextRunAt: '2026-08-29T13:00:00Z', lastScheduleError: 'Could not reach this public feed.', notificationUrl: 'https://notify.example/runs' }
-  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'z'.repeat(64) }) }))
+  await seedWorkspaceToken(page, 'z'.repeat(64))
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([watch]) }))
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
   await page.goto('/')
@@ -70,8 +81,7 @@ test('@claim:workspace-boundary workspace tokens isolate records, reject anonymo
 test('@claim:no-account-or-payment a fresh visitor creates and uses a workspace without signup, billing, or external requests', async ({ page }) => {
   const requests: string[] = []
   page.on('request', request => requests.push(request.url()))
-  await page.goto('/')
-  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  await startPrivateWorkspace(page)
   const status = await page.evaluate(async () => {
     const token = localStorage.getItem('icw:workspace-token')!
     return fetch('/api/watches', {
@@ -102,8 +112,7 @@ test('@claim:hosted-watch-limit saves three watches and explains the fourth-watc
 })
 
 test('@claim:watch-file-rejection-preserves-watches keeps a real workspace unchanged when server validation rejects an import', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  await startPrivateWorkspace(page)
   await page.evaluate(async () => {
     const token = localStorage.getItem('icw:workspace-token')!
     const response = await fetch('/api/watches', {
@@ -133,8 +142,7 @@ test('@claim:watch-file-rejection-preserves-watches keeps a real workspace uncha
 })
 
 test('@claim:keyword-edit saves edited keywords and restores them after reload', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  await startPrivateWorkspace(page)
   const watchId = await page.evaluate(async () => {
     const token = localStorage.getItem('icw:workspace-token')!
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.32' }
@@ -179,8 +187,7 @@ test('a fresh workspace token stays valid for parallel authenticated reads', asy
   // This is a backend consistency probe. Running the same 24-read burst in
   // both browser projects would intentionally exceed the per-IP rate limit.
   test.skip(testInfo.project.name === 'mobile', 'The desktop project covers this one shared API burst.')
-  await page.goto('/')
-  await page.waitForFunction(() => Boolean(localStorage.getItem('icw:workspace-token')))
+  await startPrivateWorkspace(page)
   const statuses = await page.evaluate(async () => {
     const token = localStorage.getItem('icw:workspace-token')!
     return Promise.all(Array.from({ length: 24 }, (_, index) => fetch(index % 2 ? '/api/watches' : '/api/actions', {
@@ -192,7 +199,7 @@ test('a fresh workspace token stays valid for parallel authenticated reads', asy
 
 test('@claim:requested-scans runs a real workspace scan only after the owner requests it', async ({ page }) => {
   let scans = 0
-  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'b'.repeat(64) }) }))
+  await seedWorkspaceToken(page, 'b'.repeat(64))
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 7, vendor: 'Vendor', url: 'https://vendor.example/feed', keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }]) }))
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
   await page.route('**/api/scan', route => { scans += 1; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ message: 'Scan complete. 0 new action card(s).', failures: [] }) }) })
@@ -204,7 +211,7 @@ test('@claim:requested-scans runs a real workspace scan only after the owner req
 })
 
 test('scan errors remain visible after the real workspace refreshes', async ({ page }) => {
-  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'c'.repeat(64) }) }))
+  await seedWorkspaceToken(page, 'c'.repeat(64))
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 7, vendor: 'Missing Feed', url: 'https://vendor.example/missing', keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }]) }))
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
   await page.route('**/api/scan', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ message: 'Scan finished with 1 feed error(s). Fix the listed address and scan again.', failures: ['Missing Feed: The feed returned an error response.'] }) }))
@@ -216,7 +223,7 @@ test('scan errors remain visible after the real workspace refreshes', async ({ p
 test('a full workspace exposes edit and remove recovery controls', async ({ page }) => {
   const watches = [1, 2, 3].map(id => ({ id, vendor: `Vendor ${id}`, url: `https://vendor.example/${id}`, keywords: 'webhook', owner: 'Maya', version: '', command: 'npm test' }))
   let removed = false
-  await page.route('**/api/workspaces', route => route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'd'.repeat(64) }) }))
+  await seedWorkspaceToken(page, 'd'.repeat(64))
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(removed ? watches.slice(1) : watches) }))
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
   await page.route('**/api/watches/1', async route => {
@@ -232,12 +239,18 @@ test('a full workspace exposes edit and remove recovery controls', async ({ page
   await expect(page.getByText('Removed Vendor 1. You can add another watch.')).toBeVisible()
 })
 
-test('a cold real dashboard creates one workspace even while it loads watches and actions together', async ({ page }) => {
+test('a cold landing defers workspace creation until the visitor explicitly starts one', async ({ page }) => {
   let creates = 0
   await page.route('**/api/workspaces', route => { creates += 1; return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ token: 'e'.repeat(64) }) }) })
   await page.route('**/api/watches', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
   await page.goto('/')
+  await page.waitForTimeout(250)
+  expect(creates).toBe(0)
+  await page.getByRole('button', { name: 'Try it with sample data' }).click()
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible()
+  expect(creates).toBe(0)
+  await page.getByRole('button', { name: 'Start a private workspace' }).click()
   await expect.poll(() => creates).toBe(1)
 })
 
@@ -253,6 +266,7 @@ test('@claim:cli-repository-workflow stores hashes, action cards, and acknowledg
     expect(state.actions).toHaveLength(1)
     const cardPath = join(directory, `.integration-changelog-watch/actions/${state.actions[0].id}.md`)
     await expect(readFile(cardPath, 'utf8')).resolves.toContain('Webhook update')
+    await expect(readFile(cardPath, 'utf8')).resolves.toContain('Matched keyword: webhook')
     await execFileAsync('cargo', ['run', '--quiet', '--', 'ack', '--config', config, '--id', state.actions[0].id], { cwd: process.cwd() })
     const acknowledged = JSON.parse(await readFile(join(directory, '.integration-changelog-watch/state.json'), 'utf8')) as { actions: Array<{ acknowledged: boolean }> }
     expect(acknowledged.actions[0].acknowledged).toBe(true)
