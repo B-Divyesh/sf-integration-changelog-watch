@@ -1,62 +1,71 @@
-# Handoff — polish round 4
+# Handoff — independent verification 21
 
 ## Outcome
 
-**PASS — every adversarial finding from rounds 1–4 is closed.**
+**PASS — candidate `2e443911e1e63e4d998310c84df07d1bda558630` is
+release-ready and live at <https://integration-changelog-watch.sociobot.in>.**
 
-The application repair revision `f2285321d9f76bfcf286a2bd6c441258df593f9f` is live at <https://integration-changelog-watch.sociobot.in>. The deployed image is `sociobotregistry.azurecr.io/sf-integration-changelog-watch:f2285321d9f7`, digest `sha256:885b03933636c1c724f22bda76ce75ec32894ad4700b1645bba535cb02f1418e`.
+Fresh independent verification found no critical, high, medium, or low product
+defects. No product code was changed; this revision adds only verification
+documentation and evidence.
 
-## What changed
+## What was verified
 
-- Removed automatic private-workspace creation from the cold landing page.
-- Made `/?demo=1` the landing CTA and header demo route while retaining `/demo` as a real direct route.
-- Abort real-workspace requests on route changes and prevent stale responses from writing a token or cached real data.
-- Create a workspace only after an explicit real-workspace action, including **Start a private workspace**.
-- Expanded `demo-isolation-transitions` to delay the workspace endpoint and prove the landing CTA makes no API call or `icw:*` write.
-- Updated tests that previously depended on eager creation to start or seed a workspace explicitly.
-- Removed the last `rules`/`owned actions` terminology leaks from Terms, Cargo metadata, and CLI Markdown output.
-- Updated the demo document, copy audit, 85-character verb-first catalog description, claims registry, 404 demo link, and route metadata coverage.
-- Preserved the warm paper, indigo thread, clipped-card, editorial-serif visual system in `.factory/design.md`.
+- All 28 commands in `.factory/claims.json` passed from this checkout.
+- The cold first screen explains the job, audience, and first action, and its
+  one-click sample opens realistic action cards at 390 px.
+- `npm test` passed 10/10; Rust passed 28/28; typecheck, lint, formatting,
+  Clippy with denied warnings, production Vite build, and locked release build
+  all passed.
+- Local and live full browser suites each passed 69 tests with 3 intentional
+  conditional skips. Live accessibility passed 20/20 and live demo passed
+  16/16.
+- The live workflow created a private workspace, saved and scanned a real
+  public RSS fixture, created and acknowledged an action card, scheduled and
+  stopped scans, and persisted through reload.
+- Invalid input, maximum lengths, private-network blocking, workspace
+  isolation, three-watch concurrency, process restart persistence, graceful
+  shutdown, and live rate limiting all behaved correctly.
+- The live health endpoint, footer, rendered HTML, 404, and static-asset hashes
+  match the exact candidate.
+- Browser traffic remained same-origin. Security, privacy, API cache, and
+  immutable asset-cache headers passed.
+- A packaged CLI installed in a fresh Cargo root and completed demo, scan, and
+  acknowledgement workflows.
+- Lighthouse mobile scored 100 performance, 100 accessibility, 100 best
+  practices, and 100 SEO; LCP was 1.3 s, TBT 80 ms, CLS 0, total transfer
+  92 KiB.
 
-The full finding-by-finding matrix is in `.factory/polish-4.md`.
+The detailed evidence and severity table are in
+`.factory/verification-21.md`; screenshots and machine reports are in
+`.factory/qa-artifacts/verification-21/`.
 
-## Verification
-
-Final clean clone: `/tmp/icw-polish4-clean-IhdgJA` at `f2285321d9f76bfcf286a2bd6c441258df593f9f`.
+## Reproduce
 
 ```sh
 npm ci
 npm run test:claims
 npm test
 npm run typecheck
+npm run lint
 npm run build
 cargo test --locked
 cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo build --release --locked
 npm run test:browser
-npm run test:a11y
+PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in npm run test:browser
+ICW_LIVE_RATE_LIMIT_PROBE=1 PLAYWRIGHT_BASE_URL=https://integration-changelog-watch.sociobot.in \
+  npx playwright test tests/browser/live-rate-limit.spec.ts --project=chromium
 ```
 
-Results:
-
-- 28/28 literal claim commands passed with port 8080 released between commands.
-- 10/10 Vitest tests and 28/28 Rust tests passed.
-- Production build: JS 23.28 kB raw / 7.84 kB gzip; CSS 9.03 kB raw / 2.79 kB gzip.
-- Full browser suite: 69 passed; three documented project-specific probes skipped.
-- Accessibility/routing suite: 20/20 passed with zero Axe violations.
-- Live demo/privacy/offline subset: 8/8 passed.
-- Live rate-limit probe: passed; a 100-request burst produced 429 plus `Retry-After: 1`, while `/health` stayed 200.
-- `verify-url.sh` passed on `/` and `/?demo=1` with zero console errors.
-- Lighthouse mobile: 100 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.20 s, CLS 0, TBT 0, 93,893 transferred bytes.
-- Live `/health` returned `f2285321d9f76bfcf286a2bd6c441258df593f9f`.
-
-Primary evidence is under `.factory/qa-artifacts/polish-4-live/`, especially `cold-live-audit.json`, `cold-home-mobile.png`, `cold-demo-mobile.png`, the 404/legal screenshots, both `verify.json` files, and `lighthouse-mobile.json`.
-
-## Run and deploy
-
-Use the commands above for local verification. Run locally with `cargo run` after `npm run build`; use `DATABASE_URL='sqlite:changelog-watch.db?mode=rwc'` without a `/data` mount.
-
-Deployment uses `./deploy/deploy-repair.sh`. It builds from a pushed clean revision, preserves the single Azure Files-backed replica, and checks live build identity.
+Run locally after `npm run build` with `cargo run`. Without a `/data` mount,
+set `DATABASE_URL='sqlite:changelog-watch.db?mode=rwc'`.
 
 ## Known gaps and next steps
 
-None. The product intentionally makes no offline-reload claim; the tested offline state explains that public-feed scans need a connection. No runtime AI or paid feature is implied by this deterministic workflow.
+The verifier container had no Docker-compatible engine, so it could not repeat
+OCI assembly. This is not a product defect: the Dockerfile contract test,
+locked optimized build, image-equivalent `/data`/`PORT` boot, byte-identical
+live assets, and exact live build identity all passed. No product follow-up is
+required.

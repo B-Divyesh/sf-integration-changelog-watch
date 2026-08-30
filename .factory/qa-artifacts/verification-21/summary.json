@@ -1,0 +1,78 @@
+{
+  "verified_at": "2026-08-30T01:32:00Z",
+  "candidate": "2e443911e1e63e4d998310c84df07d1bda558630",
+  "url": "https://integration-changelog-watch.sociobot.in",
+  "decision": "PASS",
+  "claims": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0
+  },
+  "tests": {
+    "vitest": { "passed": 10, "failed": 0 },
+    "rust": { "passed": 28, "failed": 0 },
+    "browser_local": { "passed": 69, "skipped": 3, "failed": 0 },
+    "browser_live": { "passed": 69, "skipped": 3, "failed": 0 },
+    "accessibility_live": { "passed": 20, "failed": 0 },
+    "demo_live": { "passed": 16, "failed": 0 }
+  },
+  "live_workflow": {
+    "sample_cards": 2,
+    "workspace_token_length": 64,
+    "scan_message": "Scan complete. 1 new action card(s).",
+    "created_action": "Webhook delivery format changes",
+    "acknowledged": true,
+    "scheduled_minutes": 15,
+    "schedule_stopped": true,
+    "persisted_after_reload": true
+  },
+  "boundaries": {
+    "empty_vendor": 400,
+    "ftp_feed": 400,
+    "loopback_feed": 400,
+    "vendor_121_characters": 400,
+    "vendor_120_characters": 201,
+    "schedule_14_minutes": 400,
+    "schedule_10081_minutes": 400,
+    "private_webhook": 400,
+    "missing_action": 404,
+    "missing_authorization": 401
+  },
+  "concurrent_watch_creates": {
+    "requests": 10,
+    "created": 3,
+    "conflicts": 7,
+    "stored": 3
+  },
+  "rate_limit": {
+    "requests": 100,
+    "authorization_responses": 40,
+    "limited_responses": 60,
+    "retry_after": "1",
+    "limited_cache_control": "no-store, private",
+    "health_after_burst": 200
+  },
+  "build": {
+    "javascript_raw_bytes": 23284,
+    "javascript_gzip_kib": 7.84,
+    "css_raw_bytes": 9025,
+    "css_gzip_kib": 2.79,
+    "hero_bytes": 58974
+  },
+  "lighthouse_mobile": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 100,
+    "fcp_seconds": 1.0,
+    "lcp_seconds": 1.3,
+    "tbt_ms": 80,
+    "cls": 0,
+    "total_transfer_bytes": 93893
+  },
+  "axe_serious_or_critical": 0,
+  "console_or_page_errors_on_cold_load": 0,
+  "browser_request_origins": [
+    "https://integration-changelog-watch.sociobot.in"
+  ]
+}
