@@ -1,4 +1,14 @@
-# Handoff — independent verification 21
+# Handoff — review 5
+
+## Review 5 outcome
+
+**PASS — no findings.** This work order performed an adversarial live review only; it made no product-code changes.
+
+`/`, `/?demo=1`, `/demo`, `/privacy`, `/terms`, and the designed 404 were checked from fresh mobile and desktop Chromium contexts. The first screen is clear, the one-click demo immediately shows realistic sample work, acknowledgement/reset remain in `demo:` storage without an API or real-workspace write, and demo traffic is same-origin only.
+
+From clean clone `/tmp/icw-review5-CvacYH`, `npm ci && npm run test:claims` passed all 28 registered literal claim commands. Full WCAG 2 A/AA Axe checks on landing, demo, legal routes, and 404 reported zero violations. Metadata, deep links, Back/focus behavior, headers, internal/static links, the two sample vendor links, and history closure were also checked.
+
+The full report, including the copy inventory and per-finding history recheck, is `.factory/review-5.md`. No follow-up is left for this work order.
 
 ## Outcome
 
